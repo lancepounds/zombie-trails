@@ -1,0 +1,11 @@
+{
+  "name": "zombie-trails",
+  "version": "1.2.0",
+  "description": "A 1980s-style trail-survival game: Omaha to Boise",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/sim.js 40",
+    "test:quick": "node test/sim.js 10"
+  }
+}

@@ -1,0 +1,429 @@
+/* ZOMBIE TRAILS — a monochrome monitor.
+   Deliberately single-world: no light theme, no color. Emphasis is inverse video,
+   the way it was on a machine that only had two of anything. */
+
+:root {
+  --ink: #06080a;          /* the tube when it is off */
+  --ink-2: #0d1113;        /* recessed wells */
+  --phos: #e7ece8;         /* phosphor white, a touch cool */
+  --phos-dim: #98a29d;
+  --phos-dimmer: #58615d;
+  --phos-faint: #2a3033;
+  --tscale: 1;
+  --gap: 14px;
+  --fs: calc(15px * var(--tscale));
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--phos);
+  font-family: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: var(--fs);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding: clamp(8px, 2vw, 26px);
+  min-height: 100vh;
+}
+
+/* ---------- the monitor ---------- */
+.tube {
+  max-width: 1120px;
+  margin: 0 auto;
+  background: var(--ink);
+  border: 2px solid var(--phos-faint);
+  padding: clamp(10px, 2vw, 22px);
+  position: relative;
+}
+.tube::after { /* faint scanlines over the whole frame */
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.20) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+.tube.reduced::after { display: none; }
+
+.brand {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; flex-wrap: wrap;
+  font-family: 'Silkscreen', 'IBM Plex Mono', monospace;
+  font-size: calc(11px * var(--tscale));
+  letter-spacing: 0.14em;
+  color: var(--phos-dimmer);
+  border-bottom: 1px solid var(--phos-faint);
+  padding-bottom: 8px; margin-bottom: var(--gap);
+  text-transform: uppercase;
+}
+
+/* ---------- typography ---------- */
+h1, h2, h3 {
+  font-family: 'Silkscreen', 'IBM Plex Mono', monospace;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-wrap: balance;
+  margin: 0 0 10px;
+}
+h1 { font-size: calc(19px * var(--tscale)); }
+h2 { font-size: calc(13px * var(--tscale)); color: var(--phos-dim); margin-top: 18px; text-transform: uppercase; letter-spacing: 0.12em; }
+h3 { font-size: calc(11px * var(--tscale)); color: var(--phos-dim); text-transform: uppercase; letter-spacing: 0.12em; margin: 0 0 6px; }
+p { margin: 0 0 10px; max-width: 68ch; }
+b, strong { font-weight: 700; }
+.dim { color: var(--phos-dim); }
+.small { font-size: calc(12px * var(--tscale)); }
+.lede { color: var(--phos-dim); max-width: 72ch; }
+.foot { color: var(--phos-dimmer); font-size: calc(12px * var(--tscale)); margin-top: 12px; }
+.warn { color: var(--phos); background: var(--phos-faint); padding: 0 4px; }
+
+/* ---------- status bar: inverse video ---------- */
+.bar {
+  display: flex; flex-wrap: wrap; gap: 0;
+  background: var(--phos); color: var(--ink);
+  font-size: calc(12px * var(--tscale));
+  letter-spacing: 0.04em;
+  margin-bottom: var(--gap);
+}
+.bar span { padding: 4px 10px; border-right: 2px solid var(--ink); white-space: nowrap; }
+.bar span:last-child { border-right: 0; }
+.bar b { font-weight: 700; margin-right: 6px; }
+
+/* ---------- scene ----------
+   The picture is a framed window, shrink-wrapped to the canvas, not a wide black
+   band with a small image floating in it. */
+.scene { display: flex; justify-content: center; margin-bottom: var(--gap); line-height: 0; }
+.scene canvas {
+  display: block; max-width: 100%; image-rendering: pixelated;
+  background: #000; border: 1px solid var(--phos-faint);
+}
+
+/* ---------- menus ---------- */
+.menu { list-style: none; margin: var(--gap) 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.menu.compact { margin-top: 0; }
+.menu .sep { color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); text-transform: uppercase; letter-spacing: 0.12em; padding: 10px 0 2px; }
+button.cmd {
+  display: flex; align-items: baseline; gap: 10px; width: 100%;
+  background: transparent; color: var(--phos);
+  border: 1px solid transparent;
+  font: inherit; text-align: left; cursor: pointer;
+  padding: 5px 8px 5px 4px;
+}
+button.cmd .num {
+  flex: none; width: 1.7em; text-align: center;
+  background: var(--phos-faint); color: var(--phos);
+  font-family: 'Silkscreen', monospace; font-size: calc(11px * var(--tscale));
+  padding: 2px 0;
+}
+button.cmd .lbl { flex: 1 1 auto; }
+button.cmd .lbl { white-space: normal; }
+button.cmd .hint {
+  flex: 0 0 auto; color: var(--phos-dimmer); font-size: calc(12px * var(--tscale));
+  text-align: right; white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis;
+}
+button.cmd:hover:not(:disabled), button.cmd:focus-visible {
+  background: var(--phos); color: var(--ink); outline: none;
+}
+button.cmd:hover:not(:disabled) .num, button.cmd:focus-visible .num { background: var(--ink); color: var(--phos); }
+button.cmd:hover:not(:disabled) .hint, button.cmd:focus-visible .hint { color: var(--ink); }
+button.cmd:disabled { color: var(--phos-dimmer); cursor: default; }
+button.cmd:disabled .num { background: transparent; border: 1px solid var(--phos-faint); color: var(--phos-dimmer); }
+
+/* ---------- title ---------- */
+.title-wrap { text-align: left; }
+.logo {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(4px, 1.32vw, 11px);
+  line-height: 1.05;
+  margin: 0 0 6px;
+  color: var(--phos);
+  overflow-x: auto;
+  white-space: pre;
+}
+.tag {
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: 0.3em; color: var(--phos-dim);
+  font-size: calc(11px * var(--tscale)); margin-bottom: var(--gap);
+}
+.blurb { color: var(--phos-dim); margin: var(--gap) 0 0; }
+
+/* ---------- documents ---------- */
+.doc { max-width: 100%; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 34px; }
+.cols section.wide { grid-column: 1 / -1; }
+ul.plain, ol.plain { margin: 0 0 10px; padding-left: 1.3em; }
+ul.plain li, ol.plain li { margin-bottom: 3px; }
+.doc ul { max-width: 68ch; }
+
+/* ---------- tables ---------- */
+table { border-collapse: collapse; width: 100%; font-size: calc(13px * var(--tscale)); margin-bottom: 10px; }
+caption { text-align: left; font-family: 'Silkscreen', monospace; font-size: calc(11px * var(--tscale)); color: var(--phos-dim); text-transform: uppercase; letter-spacing: 0.12em; padding-bottom: 5px; }
+th, td { text-align: left; padding: 3px 8px 3px 0; vertical-align: top; }
+thead th { color: var(--phos-dim); font-weight: 400; font-size: calc(11px * var(--tscale)); text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--phos-faint); }
+tfoot th, tfoot td { border-top: 1px solid var(--phos-faint); padding-top: 6px; }
+tbody tr + tr th, tbody tr + tr td { border-top: 1px solid rgba(88,97,93,0.16); }
+.num, .r { text-align: right; font-variant-numeric: tabular-nums; }
+td.r, th.r { text-align: right; }
+tr.dead th, tr.dead td { color: var(--phos-dimmer); text-decoration: line-through; text-decoration-thickness: 1px; }
+tr.dead td { text-decoration: none; }
+.small-table { max-width: 420px; }
+
+/* meters: a bar plus the number, never the bar alone */
+td.meter { position: relative; min-width: 96px; }
+td.meter span { display: inline-block; height: 8px; background: var(--phos-dim); vertical-align: middle; max-width: 74px; }
+td.meter b { font-weight: 400; margin-left: 8px; font-variant-numeric: tabular-nums; color: var(--phos-dim); }
+
+.cond { text-transform: uppercase; font-size: calc(11px * var(--tscale)); letter-spacing: 0.08em; }
+.cond.bad { background: var(--phos); color: var(--ink); padding: 0 5px; }
+.cond.mid { border-bottom: 1px solid var(--phos-dim); }
+.cond.dead, .cond.ok { color: var(--phos-dim); }
+
+/* ---------- travel screen ---------- */
+.travel { display: grid; grid-template-columns: minmax(300px, 1.15fr) minmax(280px, 1fr); gap: 10px 34px; align-items: start; }
+.warnings { list-style: none; margin: 0 0 10px; padding: 6px 10px; border: 1px solid var(--phos-dim); }
+.warnings li { padding: 1px 0; }
+.warnings li::before { content: '! '; font-weight: 700; }
+table.party th[scope=row] { font-weight: 400; }
+table.party .role { display: block; color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); text-transform: uppercase; letter-spacing: 0.08em; }
+.supplies { margin-top: 16px; }
+.supplies .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 5px 14px; }
+.supplies .grid div { border-left: 1px solid var(--phos-faint); padding-left: 8px; }
+.supplies b { display: block; font-variant-numeric: tabular-nums; }
+.supplies span { color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); }
+
+.travelling .ticker { color: var(--phos-dim); min-height: 3em; }
+
+/* ---------- events ---------- */
+.event .mtitle { font-size: calc(15px * var(--tscale)); letter-spacing: 0.14em; margin-bottom: 10px; }
+.etext { border-left: 2px solid var(--phos); padding-left: 14px; margin-bottom: 4px; }
+.etext p { font-size: calc(16px * var(--tscale)); max-width: 66ch; margin: 0; }
+.deltas { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 14px 0 0; padding: 0; }
+.deltas li {
+  border: 1px solid var(--phos-dimmer); color: var(--phos-dim);
+  padding: 1px 7px; font-size: calc(12px * var(--tscale)); letter-spacing: 0.04em;
+}
+.deltas li:first-letter { font-weight: 700; }
+
+/* ---------- setup and shop ---------- */
+input, select {
+  background: var(--ink-2); color: var(--phos); border: 1px solid var(--phos-dimmer);
+  font: inherit; font-size: calc(13px * var(--tscale)); padding: 3px 6px; width: 100%; max-width: 190px;
+}
+input:focus, select:focus { outline: 2px solid var(--phos); outline-offset: 1px; }
+.party-setup td { padding: 4px 10px 4px 0; }
+.diffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 8px; }
+button.diff {
+  background: transparent; border: 1px solid var(--phos-faint); color: var(--phos);
+  font: inherit; text-align: left; padding: 8px 10px; cursor: pointer; display: block;
+}
+button.diff b { display: block; font-family: 'Silkscreen', monospace; font-size: calc(12px * var(--tscale)); letter-spacing: 0.08em; }
+button.diff span { display: block; color: var(--phos-dim); font-size: calc(12px * var(--tscale)); margin-top: 4px; }
+button.diff.on { background: var(--phos); color: var(--ink); border-color: var(--phos); }
+button.diff.on span { color: var(--ink); }
+button.diff:focus-visible { outline: 2px solid var(--phos); outline-offset: 2px; }
+.shop-table td.qty { white-space: nowrap; }
+button.q {
+  background: transparent; border: 1px solid var(--phos-dimmer); color: var(--phos);
+  font: inherit; width: 26px; height: 22px; cursor: pointer; margin-right: 3px; line-height: 1;
+}
+button.q:hover, button.q:focus-visible { background: var(--phos); color: var(--ink); outline: none; }
+
+/* ---------- map ---------- */
+.routebar { position: relative; height: 20px; border: 1px solid var(--phos-dimmer); margin: 6px 0 18px; }
+.routebar .fill { position: absolute; inset: 0 auto 0 0; background: var(--phos-faint); }
+.routebar i { position: absolute; top: -1px; bottom: -1px; width: 1px; background: var(--phos-dim); }
+.routebar .you { position: absolute; top: 15px; transform: translateX(-50%); font-style: normal; font-size: 12px; }
+tr.done th, tr.done td { color: var(--phos-dimmer); }
+tr.here th { background: var(--phos); color: var(--ink); }
+
+/* ---------- memorial ---------- */
+.memorial { text-align: center; padding: 10px 0 4px; }
+.mem-here { font-family: 'Silkscreen', monospace; letter-spacing: 0.4em; color: var(--phos-dim); font-size: calc(11px * var(--tscale)); }
+.mem-name { font-family: 'Silkscreen', monospace; font-size: calc(26px * var(--tscale)); letter-spacing: 0.1em; margin: 6px 0; }
+.mem-meta { color: var(--phos-dim); letter-spacing: 0.1em; font-size: calc(12px * var(--tscale)); }
+.mem-label { display: block; color: var(--phos-dim); font-size: calc(12px * var(--tscale)); margin: 18px 0 5px; }
+.memorial input { max-width: 340px; margin: 0 auto; text-align: center; }
+.memorial .menu { align-items: center; margin-top: 16px; }
+.memorial button.cmd { width: auto; }
+
+/* ---------- journal ---------- */
+ul.log { list-style: none; margin: 0; padding: 0; font-size: calc(13px * var(--tscale)); }
+ul.log li {
+  display: grid; grid-template-columns: 11em 1fr; gap: 0 12px; align-items: baseline;
+  padding: 2px 0; color: var(--phos-dim); border-bottom: 1px solid rgba(88,97,93,0.14);
+}
+ul.log li.notable { color: var(--phos); }
+ul.log .when { color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); white-space: nowrap; }
+
+/* ---------- end ---------- */
+.end .rank {
+  font-family: 'Silkscreen', monospace; font-size: calc(17px * var(--tscale));
+  background: var(--phos); color: var(--ink); display: inline-block; padding: 3px 12px; letter-spacing: 0.14em;
+}
+.score tr.tot th, .score tr.tot td { border-top: 1px solid var(--phos-faint); }
+.score tr.grand th, .score tr.grand td { background: var(--phos); color: var(--ink); font-weight: 700; padding: 3px 8px; }
+
+/* ---------- scavenge ---------- */
+.scav-ui { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
+.scav-ui p { max-width: 62ch; }
+.pad { display: grid; justify-items: center; gap: 5px; }
+.pad div { display: flex; gap: 5px; }
+button.p {
+  background: transparent; border: 1px solid var(--phos-dimmer); color: var(--phos);
+  font: inherit; font-size: calc(12px * var(--tscale)); min-width: 62px; padding: 10px 8px; cursor: pointer;
+  touch-action: none; user-select: none;
+}
+button.p.wide { width: 100%; margin-top: 6px; }
+button.p:active, button.p:focus-visible { background: var(--phos); color: var(--ink); outline: none; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 780px) {
+  .travel { grid-template-columns: 1fr; }
+  .scav-ui { grid-template-columns: 1fr; }
+  .bar { font-size: calc(11px * var(--tscale)); }
+  .bar span { padding: 3px 7px; }
+  button.cmd .hint { display: none; }
+  .menu.compact button.cmd .hint { display: none; }
+  ul.log li { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .supplies .grid { grid-template-columns: repeat(2, 1fr); }
+  .etext p { font-size: calc(15px * var(--tscale)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tube::after { display: none; }
+}
+
+/* wide content never pushes the page sideways */
+.doc, .event, .travel { overflow-x: auto; }
+
+/* ---------- scavenge HUD (in the DOM, so it is readable and announced) ---------- */
+.scav-hud {
+  display: flex; flex-wrap: wrap; gap: 0;
+  background: var(--phos); color: var(--ink);
+  font-size: calc(12px * var(--tscale)); letter-spacing: 0.04em; margin-bottom: var(--gap);
+}
+.scav-hud span { display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-right: 2px solid var(--ink); }
+.scav-hud span:last-child { border-right: 0; }
+.scav-hud b { font-weight: 700; }
+.scav-hud em { font-style: normal; font-variant-numeric: tabular-nums; min-width: 2.5em; }
+.scav-hud .gauge { display: inline-block; width: 88px; height: 9px; border: 1px solid var(--ink); }
+.scav-hud .gauge s { display: block; height: 100%; width: 0; background: var(--ink); text-decoration: none; transition: width 90ms linear; }
+.scav-hud .gauge s.hot { background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 4px); }
+.scav-msg { min-height: 1.5em; margin: -6px 0 10px; color: var(--phos); font-size: calc(13px * var(--tscale)); }
+
+/* ---------- the map screen ---------- */
+.mapwrap { display: grid; grid-template-columns: minmax(320px, 1.35fr) minmax(230px, 1fr); gap: 10px 30px; align-items: start; }
+.mapinfo h2 { margin-top: 0; color: var(--phos); font-size: calc(14px * var(--tscale)); }
+.mapinfo h2 .sub, .event .mtitle .sub { color: var(--phos-dim); letter-spacing: 0.06em; }
+.mapinfo .small-table th { white-space: nowrap; }
+.maplist h3 { margin-bottom: 8px; }
+ul.places { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+button.place {
+  display: grid; grid-template-columns: 1.4em 1fr auto; gap: 8px; width: 100%;
+  background: transparent; border: 1px solid transparent; color: var(--phos-dim);
+  font: inherit; font-size: calc(13px * var(--tscale)); text-align: left; cursor: pointer; padding: 2px 6px;
+}
+button.place .pmark { color: var(--phos); }
+button.place .pdist { color: var(--phos-dimmer); font-variant-numeric: tabular-nums; }
+button.place:hover, button.place:focus-visible { background: var(--phos-faint); color: var(--phos); outline: none; }
+button.place.on { background: var(--phos); color: var(--ink); }
+button.place.on .pmark, button.place.on .pdist { color: var(--ink); }
+table.routes th[scope=row] { font-weight: 400; }
+table.routes td .dim { display: block; font-size: calc(11px * var(--tscale)); }
+@media (max-width: 860px) { .mapwrap { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   TOUCH / TABLET
+   The keyboard path stays exactly as it was. Everything below
+   only changes what a finger gets: bigger targets, no browser
+   chrome behaviours, and a shell that fills the screen.
+   ============================================================ */
+
+html, body { height: 100%; }
+html { overscroll-behavior: none; }         /* no rubber-band past the edges */
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent; /* no blue flash on tap */
+  -webkit-text-size-adjust: 100%;
+  padding:
+    calc(clamp(8px, 2vw, 26px) + env(safe-area-inset-top))
+    calc(clamp(8px, 2vw, 26px) + env(safe-area-inset-right))
+    calc(clamp(8px, 2vw, 26px) + env(safe-area-inset-bottom))
+    calc(clamp(8px, 2vw, 26px) + env(safe-area-inset-left));
+}
+/* the game chrome is not a document: nothing to select or long-press */
+.tube { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+input, textarea, .etext, ul.log, .doc p { user-select: text; -webkit-user-select: text; }
+button, .place, .diff, .q, .p { touch-action: manipulation; }   /* kills the 300ms tap delay and double-tap zoom */
+
+/* standalone (home-screen) mode: fill the display, scroll the content, not the page */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  body { overflow: hidden; padding-top: calc(6px + env(safe-area-inset-top)); }
+  .tube { height: 100%; display: flex; flex-direction: column; max-width: 1400px; }
+  #screen { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .bar { position: sticky; top: 0; z-index: 5; }
+}
+
+/* ---------- coarse pointers: every target at least 48px ---------- */
+@media (pointer: coarse) {
+  :root { --tscale: 1.06; }
+  button.cmd {
+    min-height: 52px; align-items: center; padding: 10px 12px 10px 6px;
+    border: 1px solid var(--phos-faint); gap: 12px;
+  }
+  button.cmd:active:not(:disabled) { background: var(--phos); color: var(--ink); }
+  button.cmd:active:not(:disabled) .num { background: var(--ink); color: var(--phos); }
+  button.cmd:active:not(:disabled) .hint { color: var(--ink); }
+  button.cmd .num { padding: 5px 0; width: 2em; }
+  .menu { gap: 6px; }
+  button.cmd .hint { display: block; max-width: 40%; }
+
+  button.q { width: 52px; height: 46px; font-size: calc(17px * var(--tscale)); }
+  button.q:active { background: var(--phos); color: var(--ink); }
+  .shop-table td, .shop-table th { padding: 8px 8px 8px 0; }
+  button.diff { padding: 14px 14px 16px; }
+  button.place { min-height: 44px; padding: 8px 8px; align-items: center; }
+  button.place:active { background: var(--phos); color: var(--ink); }
+  input, select { min-height: 46px; font-size: 16px; }      /* 16px stops iOS zooming the field */
+  .party-setup td { padding: 6px 10px 6px 0; }
+  .bar span { padding: 7px 11px; }
+  ul.places { gap: 2px; }
+}
+
+/* ---------- iPad portrait: one column, wider reading measure ---------- */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .travel { grid-template-columns: 1fr; gap: 18px; }
+  .cols { grid-template-columns: 1fr; }
+  .mapwrap { grid-template-columns: 1fr; }
+  .scav-ui { grid-template-columns: 1fr; }
+  .supplies .grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---------- the scavenging run on a touch screen ----------
+   No d-pad. Put a finger down anywhere on the left of the play area and it
+   becomes a thumbstick where you put it; the right side is one big SEARCH. */
+.touchpad { display: none; }
+@media (pointer: coarse) {
+  .pad { display: none; }
+  .touchpad { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: stretch; margin-top: 10px; }
+  .stickzone {
+    border: 1px dashed var(--phos-dimmer); color: var(--phos-dimmer);
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: 96px; padding: 10px; font-size: calc(12px * var(--tscale)); letter-spacing: 0.08em;
+  }
+  .stickzone.live { border-style: solid; border-color: var(--phos); color: var(--phos); }
+  .touchbtns { display: flex; flex-direction: column; gap: 8px; }
+  button.big {
+    background: transparent; border: 1px solid var(--phos-dim); color: var(--phos);
+    font: inherit; font-family: 'Silkscreen', monospace; letter-spacing: 0.1em;
+    font-size: calc(13px * var(--tscale)); min-width: 132px; min-height: 62px; padding: 10px 16px; cursor: pointer;
+  }
+  button.big:active { background: var(--phos); color: var(--ink); }
+  button.big.ghost { border-color: var(--phos-faint); color: var(--phos-dim); min-height: 46px; }
+}
+
+/* the canvas itself is a control surface during a scavenging run */
+.scav .scene { touch-action: none; }
