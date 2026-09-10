@@ -1,16 +1,16 @@
-/* Build: concatenate src/ into index.html at the repo root.
+/* Build: concatenate  into index.html at the repo root.
    GitHub Pages serves index.html from here, so this is the file that ships.
    Run:  node build.js     (or: npm run build) */
 const fs = require('fs');
 const path = require('path');
 const ROOT = __dirname;
-const SRC = path.join(ROOT, 'src');
+const SRC = ROOT;
 
 const order = fs.readdirSync(SRC).filter((f) => /^\d+_.*\.js$/.test(f)).sort();
 const js = order.map((f) => `/* ===== ${f} ===== */\n` + fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
 const css = fs.readFileSync(path.join(SRC, 'style.css'), 'utf8');
 const icons = JSON.parse(fs.readFileSync(path.join(SRC, 'icons.json'), 'utf8'));
-const VERSION = 'v1.2';
+const VERSION = 'v1.3';
 
 const manifest = {
   name: 'Zombie Trails',
@@ -28,7 +28,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#06080a">
 <meta name="color-scheme" content="dark">
 <link rel="manifest" href="manifest.webmanifest">
@@ -67,4 +67,4 @@ for (const sz of ['192', '512']) fs.writeFileSync(path.join(ROOT, `icon-${sz}.pn
 
 console.log('built index.html  ' + (html.length / 1024).toFixed(1) + ' KB');
 console.log('modules: ' + order.length + '  |  events: ' + (html.match(/id: '/g) || []).length);
-console.log('\nNext: commit src/ and index.html together. Pages redeploys in about a minute.');
+console.log('\nNext: commit the source and index.html together.');

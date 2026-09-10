@@ -82,6 +82,8 @@ ZT.Events = {
   },
 
   maybeFire(s, when) {
+    const story = ZT.Story && ZT.Story.due(s, when);
+    if (story) return ZT.Events.begin(s, story);
     if (!ZT.roll(s, ZT.Events.fireChance(s, when))) return null;
     const e = ZT.Events.choose(s, when);
     if (!e) return null;

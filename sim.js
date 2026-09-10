@@ -1,6 +1,6 @@
 /* Headless balance and crash harness. Runs the engine with a plain-sense AI. */
 const fs = require('fs'), path = require('path'), vm = require('vm');
-const SRC = path.join(__dirname, '..', 'src');
+const SRC = __dirname;
 const files = fs.readdirSync(SRC).filter((f) => /^[0-7]\d_.*\.js$/.test(f)).sort();
 const sandbox = { console, globalThis: null };
 sandbox.globalThis = sandbox;
@@ -195,10 +195,11 @@ console.log('\n=== ROADS TAKEN ===');
 for (const l of ZT.LEGS) { const k = l.from + '>' + l.to; if (ZT.legsFrom(l.from).length > 1) console.log(' ', k.padEnd(24), forkSeen[k] || 0); }
 console.log('shortest route', ZT.SHORTEST, 'mi | longest', ZT.LONGEST, 'mi');
 console.log('events defined:', ZT.Events.all.length, '| never fired:', never.length, never.slice(0, 25).join(', '));
-const lmNever = Object.values(ZT.LM_EVENT).filter((id) => !eventSeen[id]);
+const lmNever = Object.values(ZT.NODE_EVENT).filter((id) => !eventSeen[id]);
 if (lmNever.length) console.log('landmark events never fired:', lmNever.join(', '));
 // choices never taken
 const allChoices = [];
 for (const e of ZT.Events.all) (e.choices || []).forEach((ch, i) => allChoices.push(e.id + ':' + i));
 const cNever = allChoices.filter((k) => !choiceSeen[k]);
 console.log('choices defined:', allChoices.length, '| never taken:', cNever.length, cNever.slice(0, 20).join(' '));
+process.exitCode = crashes ? 1 : 0;

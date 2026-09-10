@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#06080a">
 <meta name="color-scheme" content="dark">
 <link rel="manifest" href="manifest.webmanifest">
@@ -30,7 +30,7 @@
   --phos-faint: #2a3033;
   --tscale: 1;
   --gap: 14px;
-  --fs: calc(15px * var(--tscale));
+  --fs: calc(1rem * var(--tscale));
   color-scheme: dark;
 }
 
@@ -121,8 +121,12 @@ b, strong { font-weight: 700; }
 /* ---------- menus ---------- */
 .menu { list-style: none; margin: var(--gap) 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .menu.compact { margin-top: 0; }
+.road-note { border-left: 2px solid var(--phos-dim); padding: 6px 10px; margin-bottom: 12px; }
+.road-note p { margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .tube::after { display: none; } }
 .menu .sep { color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); text-transform: uppercase; letter-spacing: 0.12em; padding: 10px 0 2px; }
 button.cmd {
+  min-height: 44px;
   display: flex; align-items: baseline; gap: 10px; width: 100%;
   background: transparent; color: var(--phos);
   border: 1px solid transparent;
@@ -138,8 +142,8 @@ button.cmd .num {
 button.cmd .lbl { flex: 1 1 auto; }
 button.cmd .lbl { white-space: normal; }
 button.cmd .hint {
-  flex: 0 0 auto; color: var(--phos-dimmer); font-size: calc(12px * var(--tscale));
-  text-align: right; white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis;
+  flex: 0 1 46%; color: var(--phos-dim); font-size: calc(14px * var(--tscale));
+  text-align: right; white-space: normal; max-width: 46%; overflow-wrap: anywhere;
 }
 button.cmd:hover:not(:disabled), button.cmd:focus-visible {
   background: var(--phos); color: var(--ink); outline: none;
@@ -453,7 +457,7 @@ button, .place, .diff, .q, .p { touch-action: manipulation; }   /* kills the 300
 <div class="tube" id="tube">
   <div class="brand">
     <span>Zombie Trails</span>
-    <span>Omaha &rarr; Boise &middot; v1.2</span>
+    <span>Omaha &rarr; Boise &middot; v1.3</span>
   </div>
   <main id="screen" tabindex="-1"></main>
 </div>
@@ -1746,6 +1750,8 @@ ZT.Events = {
   },
 
   maybeFire(s, when) {
+    const story = ZT.Story && ZT.Story.due(s, when);
+    if (story) return ZT.Events.begin(s, story);
     if (!ZT.roll(s, ZT.Events.fireChance(s, when))) return null;
     const e = ZT.Events.choose(s, when);
     if (!e) return null;
@@ -4735,6 +4741,109 @@ ZT.Events.add([
 ]);
 })();
 
+/* ===== 65_story.js ===== */
+/* Small human stories. No extra clocks, currencies, or combat controls. */
+'use strict';
+ZT.Story = {
+  traits: {
+    driver: ['Stubborn optimist', 'keeps promising the next town will be better', 'We have passed three last gas stations. I am beginning to question the signs.'],
+    medic: ['Soft heart, steady hands', 'still believes strangers are worth stopping for', 'We can be careful without forgetting how to be people.'],
+    mechanic: ['Professional pessimist', 'complains about the wagon and keeps it running', 'That noise is new. I preferred the old noise.'],
+    scout: ['Quiet observer', 'notices what everyone else drives past', 'No birds on that fence. Keep moving.'],
+    generalist: ['Collector of small comforts', 'saves little things that remind everyone of home', 'I found a mint in my coat. We may have to hold an auction.'],
+  },
+  trait(m) { return this.traits[m.role] || this.traits.generalist; },
+  line(s) {
+    const alive = ZT.State.alive(s);
+    if (!alive.length) return 'Nobody speaks.';
+    const m = alive[Math.floor(s.day / 2) % alive.length];
+    if (m.inf === 'symptomatic') return `${m.name} asks how much farther. Nobody gives a number.`;
+    if (m.fatigue > 70) return `${m.name}: "I am not asleep. I am resting my eyes very thoroughly."`;
+    if (s.day % 3 === 0) {
+      return ['The radio catches a weather report. The man sounds bored. You envy him.',
+        'Two shots in the distance. A long silence. Nobody asks for the radio.',
+        'A roadside sign promises hot coffee. Somebody has crossed out the word hot.',
+        'Wind works at the windows. For a little while, it is the only thing following you.'][Math.floor(s.day / 3) % 4];
+    }
+    return `${m.name}: "${this.trait(m)[2]}"`;
+  },
+  remember(s, text) {
+    s.flags.roadMemories = s.flags.roadMemories || [];
+    s.flags.roadMemories.push({ day: s.day, text });
+    ZT.State.log(s, text, true);
+    return text;
+  },
+  due(s, when) {
+    if (when !== 'travel' || s.day - s.lastEventDay < 2) return null;
+    const f = s.flags;
+    let id = null;
+    if (!f.redScarf && s.stats.travelDays >= 3) id = 'story_red_scarf';
+    else if (f.redScarf && !f.redCamp && s.day >= f.redDay + 5 && s.miles >= f.redMile + 65) id = 'story_red_camp';
+    else if (f.redCamp && !f.redEnd && s.day >= f.redCampDay + 6 && s.miles >= f.redCampMile + 90) id = 'story_red_return';
+    return id && !s.once[id] ? id : null;
+  },
+  forecast(s) {
+    const need = ZT.State.aliveCount(s) * ZT.RATIONS[s.rations].lbs * (s.vehicle.has ? 1 : 1.15);
+    const days = need ? Math.floor(s.inv.food / need) : 0;
+    const lines = [`Food: about ${days} full days at these rations (${ZT.n(need)} lb/day).`];
+    if (s.vehicle.has) lines.push(`Fuel: about ${Math.floor(ZT.Vehicle.range(s))} miles at this load and pace.`);
+    let danger = 'No immediate crisis. Weather and encounters can change that.';
+    if (s.vehicle.has && s.vehicle.broken) danger = `Wagon: repair the ${s.vehicle.broken} before driving.`;
+    else if (days < 2) danger = 'Food first: scavenge soon. An unfed day damages health and morale.';
+    else if (ZT.State.alive(s).some(m => m.inf === 'symptomatic' || m.inf === 'bitten')) danger = 'Infection: check the party and treat wounds while there is time.';
+    else if (s.vehicle.has && ZT.Vehicle.range(s) < 30) danger = 'Fuel is low. Search before committing to a long road.';
+    else if (ZT.Party.avgFatigue(s) > 65) danger = 'The party needs rest. Exhaustion slows travel and can cost health.';
+    else if (ZT.Travel.threat(s) > 0.65) danger = 'The dead are active here. Noise makes encounters more likely.';
+    lines.push(danger);
+    return lines;
+  },
+  epilogue(s, m) {
+    if (!m.alive) return `${m.name} ${this.trait(m)[1]}. You remember that as well as the way they died.`;
+    if (m.missing) return `${m.name} is still missing. There is no grave to put a name on.`;
+    if (s.over && s.over.why === 'win') return `${m.name} made it. At the gate, someone asks what they can do. "${ZT.cap(m.role)}," they say. A beginning.`;
+    return `${m.name} was still with you when the journey ended. They ${this.trait(m)[1]}.`;
+  },
+};
+
+ZT.Events.add([
+  { id: 'story_red_scarf', cat: 'people', once: true, cond: () => false, art: 'road',
+    text(s) {
+      const medic = ZT.State.byRole(s, 'medic');
+      return 'A woman in a red scarf stands beside a handcart. Her brother cannot walk. She asks for food, not a ride. ' +
+        (medic ? `${medic.name} says, "We can spare something. If we decide to."` : 'She watches you count the bags.');
+    }, choices: [
+      { text: 'Give them food', hint: '20 lb food; the medic takes heart', show: s => s.inv.food >= 20,
+        do(s, c) { ZT.X.take(s, c, 'food', 20); const m = ZT.State.byRole(s, 'medic'); if (m) ZT.X.moraleM(s, c, m, 5); s.flags.redScarf = 'helped'; return ZT.Story.remember(s, 'You fed the woman in the red scarf and her brother. She said her name was Ruth.'); } },
+      { text: 'Take food from the handcart', hint: 'gain 15 lb food; lose 5 morale',
+        do(s, c) { ZT.X.give(s, c, 'food', 15); ZT.X.morale(s, c, -5); s.flags.redScarf = 'robbed'; return ZT.Story.remember(s, 'You took food from the handcart. The woman in the red scarf watched without speaking.'); } },
+      { text: 'Leave them their supplies and move on', hint: 'no supply cost',
+        do(s) { s.flags.redScarf = 'passed'; return ZT.Story.remember(s, 'You left the woman in the red scarf beside the road. There was no way to know what happened next.'); } },
+    ], after(s) { s.flags.redDay = s.day; s.flags.redMile = s.miles; } },
+  { id: 'story_red_camp', cat: 'people', once: true, cond: () => false, art: 'camp',
+    text(s) { return 'A camp has formed behind a feed store. A red scarf hangs from a tent pole. Ruth recognizes you. ' +
+      ({ helped: 'Her brother is sitting up. She sets a fuel can beside the fire.', robbed: 'She tells the others what you took. The welcome ends there.', passed: '"We found help," she says. She lets that sit for a moment.' }[s.flags.redScarf]); },
+    choices: [
+      { text: 'Accept Ruth\'s thanks', hint: '8 gallons fuel', show: s => s.flags.redScarf === 'helped',
+        do(s, c) { ZT.X.give(s, c, 'fuel', 8); s.flags.redCamp = 'friend'; return ZT.Story.remember(s, 'Ruth shared fuel because you had shared food. Her brother shook your hand.'); } },
+      { text: 'Return what you took', hint: '15 lb food; an apology, not a clean slate', show: s => s.flags.redScarf === 'robbed' && s.inv.food >= 15,
+        do(s, c) { ZT.X.take(s, c, 'food', 15); s.flags.redCamp = 'amends'; return ZT.Story.remember(s, 'You repaid the food. Ruth accepted it. Forgiveness was not discussed.'); } },
+      { text: 'Trade for a fuel can', hint: '2 goods for 6 gallons', show: s => s.flags.redScarf === 'passed' && s.inv.goods >= 2,
+        do(s, c) { ZT.X.take(s, c, 'goods', 2); ZT.X.give(s, c, 'fuel', 6); s.flags.redCamp = 'trade'; return ZT.Story.remember(s, 'You traded fairly at Ruth\'s camp. This time you learned her name.'); } },
+      { text: 'Keep moving', hint: 'no supplies change hands',
+        do(s) { s.flags.redCamp = 'left'; return ZT.Story.remember(s, 'You left Ruth\'s camp. Some roads can be traveled twice without anything being put right.'); } },
+    ], after(s) { s.flags.redCampDay = s.day; s.flags.redCampMile = s.miles; } },
+  { id: 'story_red_return', cat: 'people', once: true, cond: () => false, art: 'road',
+    text(s) { const friendly = ['friend', 'amends', 'trade'].includes(s.flags.redCamp); return friendly ?
+      'Ruth\'s brother waves you down before a blind bend. "Dead piled up past there. Ruth said to watch for you." He points out a quiet way around.' :
+      'A caravan turns off before a blind bend. You recognize Ruth\'s handcart tied to a truck. Nobody waves. Beyond the bend, the dead fill the road.'; },
+    choices: [
+      { text: 'Take the warned-about side road', hint: 'avoid the crowd; morale +3', show: s => ['friend', 'amends', 'trade'].includes(s.flags.redCamp),
+        do(s, c) { ZT.X.morale(s, c, 3); s.flags.redEnd = 'warned'; return ZT.Story.remember(s, 'A choice beside a handcart became a warning farther west. Ruth\'s family remembered you.'); } },
+      { text: 'Backtrack and find a quiet way around', hint: 'half a day lost', show: s => !['friend', 'amends', 'trade'].includes(s.flags.redCamp),
+        do(s, c) { ZT.X.delay(s, c, 0.5); s.flags.redEnd = 'detour'; return ZT.Story.remember(s, 'You found your own way around the dead. There was nobody ahead waiting to warn you.'); } },
+    ] },
+]);
+
 /* ===== 70_scavenge.js ===== */
 /* ZOMBIE TRAILS — SCAVENGE THE BLOCK.
    A short, crude, top-down salvage run. Greed is the danger.
@@ -6176,7 +6285,7 @@ let screen = 'title';
 let ctxData = {};             // per-screen scratch
 let raf = null, last = 0, tAnim = 0;
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: true }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: false, daily: true }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -6430,6 +6539,7 @@ function goSettings() {
     { label: `Scavenging: ${settings.arcade ? 'MINIGAME' : 'MENU ONLY'}`, hint: 'menu mode needs no timed input' },
     { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE'][settings.scale]}`, hint: '' },
     { label: 'Erase saved game and records', hint: 'cannot be undone' },
+    { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
     { label: 'Back', key: 'Esc' },
   ];
   const root = render(`<div class="doc"><h1>SETTINGS</h1>${menuHTML(items)}</div>`);
@@ -6439,10 +6549,11 @@ function goSettings() {
     else if (i === 2) settings.arcade = !settings.arcade;
     else if (i === 3) { settings.scale = (settings.scale + 1) % 3; applyScale(); }
     else if (i === 4) { if (confirm('Erase the saved game, memorials and scores?')) { ZT.Save.clear(1); ZT.Save.saveSettings(Object.assign({}, settings, { memorials: null })); try { localStorage.removeItem('zombietrails.v1.memorials'); localStorage.removeItem('zombietrails.v1.scores'); } catch (e) {} } }
-    else { saveSettings(); goTitle(); return; }
+    else if (i === 5) settings.daily = !settings.daily;
+    else { saveSettings(); if (S) goTravel(); else goTitle(); return; }
     saveSettings(); goSettings();
   });
-  keyMap['escape'] = () => { saveSettings(); goTitle(); };
+  keyMap['escape'] = () => { saveSettings(); if (S) goTravel(); else goTitle(); };
 }
 function saveSettings() { ZT.Save.saveSettings(settings); }
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
@@ -6632,12 +6743,15 @@ function goTravel() {
     { label: 'Work on the wagon', hint: v.has ? (v.broken ? 'it is broken' : `${ZT.Vehicle.status(S).toLowerCase()}`) : 'no wagon', disabled: !v.has },
     { label: 'Journal', hint: 'what has happened so far' },
     { label: 'Save and quit', hint: '', key: '0' },
+    { label: 'Settings', hint: 'text, sound, and untimed controls', key: 'S' },
   ];
   const root = render(`
     ${statusLine()}
     ${sceneHTML(sceneAlt())}
     <div class="travel">
       <div class="left">
+        <section class="road-note" aria-label="Before you travel">${ZT.Story.forecast(S).map(t => `<p>${esc(t)}</p>`).join('')}</section>
+        <p class="road-note">${esc(ZT.Story.line(S))}</p>
         ${warnings.length ? `<ul class="warnings" role="alert">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
         ${menuHTML(items, { compact: true })}
       </div>
@@ -6658,6 +6772,7 @@ function goTravel() {
     else if (i === 8) goRepair();
     else if (i === 9) goJournal();
     else if (i === 10) { ZT.Save.save(S); showModal('SAVED', 'The journey is written down. It will be here when you come back.', [{ label: 'Back to the road' }, { label: 'Quit to title' }], (k) => (k === 1 ? goTitle() : goTravel()), 'camp'); }
+    else if (i === 11) goSettings();
   });
   ZT.Save.save(S);
 }
@@ -6681,7 +6796,7 @@ function partyTable() {
     const c = ZT.State.condition(m);
     if (!m.alive) return `<tr class="dead"><th scope="row">${esc(m.name)}</th><td colspan="3">died day ${m.diedDay} &mdash; ${esc(m.cause)}</td></tr>`;
     return `<tr>
-      <th scope="row">${esc(m.name)}<span class="role">${esc(m.role)}</span></th>
+      <th scope="row">${esc(m.name)}<span class="role">${esc(m.role)} · ${esc(ZT.Story.trait(m)[0])}</span></th>
       <td class="cond ${condClass(c)}">${esc(ZT.cap(c))}</td>
       <td class="meter" aria-label="health ${Math.round(m.health)} of 100"><span style="width:${Math.round(m.health)}%"></span><b>${Math.round(m.health)}</b></td>
       <td class="dim small">${m.fatigue > 65 ? 'exhausted' : m.fatigue > 40 ? 'tired' : 'rested'}${m.morale < 30 ? ', low' : ''}${m.isolated ? ', isolated' : ''}</td>
@@ -6727,6 +6842,7 @@ function stepTravel() {
   const tick = $('ticker');
   if (tick) tick.textContent = travelFlavor() + ` Day ${S.day}, mile ${Math.round(S.miles)}.`;
   if (!r) {
+    if (settings.daily) { travelling = null; goTravel(); return; }
     travelling.t = 0;
     travelling.dur = 0.5;
     // stop travelling on a status change worth surfacing
@@ -6979,7 +7095,7 @@ function goStatus(back) {
 }
 function memberNotes(m) {
   const n = ZT.Party.needs(m);
-  const parts = [];
+  const parts = [ZT.Story.trait(m)[1]];
   if (m.inf === 'bitten') parts.push('bitten' + (m.infStable ? ', stabilised' : '') + ' — ' + ZT.Party.woundHint(S, m).toLowerCase().replace(/\.$/, ''));
   else if (m.inf === 'symptomatic') parts.push('feverish' + (m.infStable ? ', stabilised' : ''));
   else if (m.inf === 'exposed') parts.push('scratched');
@@ -7354,7 +7470,7 @@ function goEnd() {
       <p class="lede">${esc(endBlurb(won, survivors))}</p>
       <div class="cols">
         <section>
-          <h2>Who arrived</h2>
+          <h2>${won ? 'Who arrived' : 'Who was still with you'}</h2>
           ${survivors.length ? `<ul class="plain">${survivors.map((m) => `<li>${esc(m.name)}, ${esc(m.role)} &mdash; ${esc(ZT.State.condition(m))}</li>`).join('')}</ul>` : '<p class="dim">Nobody.</p>'}
           ${dead.length ? `<h2>Who did not</h2><ul class="plain">${dead.map((m) => `<li>${esc(m.name)} &mdash; day ${m.diedDay}, mile ${m.diedMile}, ${esc(m.cause)}${m.epitaph ? `. &ldquo;${esc(m.epitaph)}&rdquo;` : ''}</li>`).join('')}</ul>` : ''}
         </section>
@@ -7369,6 +7485,9 @@ function goEnd() {
           <p class="rank">${esc(rank)}</p>
         </section>
         <section class="wide">
+          <h2>The people you remember</h2>
+          ${S.party.map(m => `<p>${esc(ZT.Story.epilogue(S, m))}</p>`).join('')}
+          ${(S.flags.roadMemories || []).length ? `<h2>Choices that followed you</h2><ul class="plain">${S.flags.roadMemories.map(m => `<li>Day ${m.day}: ${esc(m.text)}</li>`).join('')}</ul>` : ''}
           <h2>What happened</h2>
           <ul class="log">${notable.map((l) => `<li class="notable"><span class="when">Day ${l.day} &middot; mi ${l.mile}</span> ${esc(l.text)}</li>`).join('')}</ul>
         </section>
