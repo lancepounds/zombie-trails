@@ -6,7 +6,7 @@ let screen = 'title';
 let ctxData = {};             // per-screen scratch
 let raf = null, last = 0, tAnim = 0;
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: true }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: false, daily: true }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -260,6 +260,7 @@ function goSettings() {
     { label: `Scavenging: ${settings.arcade ? 'MINIGAME' : 'MENU ONLY'}`, hint: 'menu mode needs no timed input' },
     { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE'][settings.scale]}`, hint: '' },
     { label: 'Erase saved game and records', hint: 'cannot be undone' },
+    { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
     { label: 'Back', key: 'Esc' },
   ];
   const root = render(`<div class="doc"><h1>SETTINGS</h1>${menuHTML(items)}</div>`);
@@ -269,10 +270,11 @@ function goSettings() {
     else if (i === 2) settings.arcade = !settings.arcade;
     else if (i === 3) { settings.scale = (settings.scale + 1) % 3; applyScale(); }
     else if (i === 4) { if (confirm('Erase the saved game, memorials and scores?')) { ZT.Save.clear(1); ZT.Save.saveSettings(Object.assign({}, settings, { memorials: null })); try { localStorage.removeItem('zombietrails.v1.memorials'); localStorage.removeItem('zombietrails.v1.scores'); } catch (e) {} } }
-    else { saveSettings(); goTitle(); return; }
+    else if (i === 5) settings.daily = !settings.daily;
+    else { saveSettings(); if (S) goTravel(); else goTitle(); return; }
     saveSettings(); goSettings();
   });
-  keyMap['escape'] = () => { saveSettings(); goTitle(); };
+  keyMap['escape'] = () => { saveSettings(); if (S) goTravel(); else goTitle(); };
 }
 function saveSettings() { ZT.Save.saveSettings(settings); }
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
@@ -462,12 +464,15 @@ function goTravel() {
     { label: 'Work on the wagon', hint: v.has ? (v.broken ? 'it is broken' : `${ZT.Vehicle.status(S).toLowerCase()}`) : 'no wagon', disabled: !v.has },
     { label: 'Journal', hint: 'what has happened so far' },
     { label: 'Save and quit', hint: '', key: '0' },
+    { label: 'Settings', hint: 'text, sound, and untimed controls', key: 'S' },
   ];
   const root = render(`
     ${statusLine()}
     ${sceneHTML(sceneAlt())}
     <div class="travel">
       <div class="left">
+        <section class="road-note" aria-label="Before you travel">${ZT.Story.forecast(S).map(t => `<p>${esc(t)}</p>`).join('')}</section>
+        <p class="road-note">${esc(ZT.Story.line(S))}</p>
         ${warnings.length ? `<ul class="warnings" role="alert">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
         ${menuHTML(items, { compact: true })}
       </div>
@@ -488,6 +493,7 @@ function goTravel() {
     else if (i === 8) goRepair();
     else if (i === 9) goJournal();
     else if (i === 10) { ZT.Save.save(S); showModal('SAVED', 'The journey is written down. It will be here when you come back.', [{ label: 'Back to the road' }, { label: 'Quit to title' }], (k) => (k === 1 ? goTitle() : goTravel()), 'camp'); }
+    else if (i === 11) goSettings();
   });
   ZT.Save.save(S);
 }
@@ -511,7 +517,7 @@ function partyTable() {
     const c = ZT.State.condition(m);
     if (!m.alive) return `<tr class="dead"><th scope="row">${esc(m.name)}</th><td colspan="3">died day ${m.diedDay} &mdash; ${esc(m.cause)}</td></tr>`;
     return `<tr>
-      <th scope="row">${esc(m.name)}<span class="role">${esc(m.role)}</span></th>
+      <th scope="row">${esc(m.name)}<span class="role">${esc(m.role)} · ${esc(ZT.Story.trait(m)[0])}</span></th>
       <td class="cond ${condClass(c)}">${esc(ZT.cap(c))}</td>
       <td class="meter" aria-label="health ${Math.round(m.health)} of 100"><span style="width:${Math.round(m.health)}%"></span><b>${Math.round(m.health)}</b></td>
       <td class="dim small">${m.fatigue > 65 ? 'exhausted' : m.fatigue > 40 ? 'tired' : 'rested'}${m.morale < 30 ? ', low' : ''}${m.isolated ? ', isolated' : ''}</td>
@@ -557,6 +563,7 @@ function stepTravel() {
   const tick = $('ticker');
   if (tick) tick.textContent = travelFlavor() + ` Day ${S.day}, mile ${Math.round(S.miles)}.`;
   if (!r) {
+    if (settings.daily) { travelling = null; goTravel(); return; }
     travelling.t = 0;
     travelling.dur = 0.5;
     // stop travelling on a status change worth surfacing
@@ -809,7 +816,7 @@ function goStatus(back) {
 }
 function memberNotes(m) {
   const n = ZT.Party.needs(m);
-  const parts = [];
+  const parts = [ZT.Story.trait(m)[1]];
   if (m.inf === 'bitten') parts.push('bitten' + (m.infStable ? ', stabilised' : '') + ' — ' + ZT.Party.woundHint(S, m).toLowerCase().replace(/\.$/, ''));
   else if (m.inf === 'symptomatic') parts.push('feverish' + (m.infStable ? ', stabilised' : ''));
   else if (m.inf === 'exposed') parts.push('scratched');
@@ -1184,7 +1191,7 @@ function goEnd() {
       <p class="lede">${esc(endBlurb(won, survivors))}</p>
       <div class="cols">
         <section>
-          <h2>Who arrived</h2>
+          <h2>${won ? 'Who arrived' : 'Who was still with you'}</h2>
           ${survivors.length ? `<ul class="plain">${survivors.map((m) => `<li>${esc(m.name)}, ${esc(m.role)} &mdash; ${esc(ZT.State.condition(m))}</li>`).join('')}</ul>` : '<p class="dim">Nobody.</p>'}
           ${dead.length ? `<h2>Who did not</h2><ul class="plain">${dead.map((m) => `<li>${esc(m.name)} &mdash; day ${m.diedDay}, mile ${m.diedMile}, ${esc(m.cause)}${m.epitaph ? `. &ldquo;${esc(m.epitaph)}&rdquo;` : ''}</li>`).join('')}</ul>` : ''}
         </section>
@@ -1199,6 +1206,9 @@ function goEnd() {
           <p class="rank">${esc(rank)}</p>
         </section>
         <section class="wide">
+          <h2>The people you remember</h2>
+          ${S.party.map(m => `<p>${esc(ZT.Story.epilogue(S, m))}</p>`).join('')}
+          ${(S.flags.roadMemories || []).length ? `<h2>Choices that followed you</h2><ul class="plain">${S.flags.roadMemories.map(m => `<li>Day ${m.day}: ${esc(m.text)}</li>`).join('')}</ul>` : ''}
           <h2>What happened</h2>
           <ul class="log">${notable.map((l) => `<li class="notable"><span class="when">Day ${l.day} &middot; mi ${l.mile}</span> ${esc(l.text)}</li>`).join('')}</ul>
         </section>

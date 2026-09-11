@@ -13,18 +13,18 @@ Monochrome, menu-driven, keyboard and touch. No frameworks, no dependencies.
 ## How this repo works
 
 `index.html` is the whole playable game — the file GitHub Pages serves. It is
-**generated**, not edited. The readable source is in `src/`, and `build.js`
+**generated**, not edited. The readable source is in the repository root, and `build.js`
 concatenates it.
 
 ```
-src/00_core.js … src/90_ui.js   the 17 modules, in load order
-src/style.css                   all styling
-build.js                        concatenates src/ into index.html
-test/sim.js                     the balance simulator
+00_core.js … 90_ui.js   the 18 modules, in load order
+style.css                   all styling
+build.js                        concatenates source into index.html
+sim.js                     the balance simulator
 index.html                      BUILT — do not edit by hand
 ```
 
-To rebuild after changing anything in `src/`:
+To rebuild after changing the source:
 
 ```bash
 node build.js
@@ -61,7 +61,7 @@ That rewrites `index.html`. Commit both the source change and the rebuilt file.
 ## Adding an event
 
 This is the main way to grow the game, and it needs no engine changes. Add an
-object to any `src/6x_*.js` file and rebuild.
+object to any `6x_*.js` file and rebuild.
 
 ```js
 {
@@ -105,7 +105,7 @@ memorable as a horde. Humour works best delivered flat.
 ## Checking the balance
 
 ```bash
-node test/sim.js 40
+node sim.js 40
 ```
 
 Plays full campaigns headlessly across four difficulties, three choice policies,
@@ -128,9 +128,9 @@ Two findings worth not re-learning the hard way:
 
 ## Publishing a change
 
-1. Edit something in `src/`
+1. Edit the numbered JavaScript modules or `style.css`
 2. `node build.js`
-3. Commit `src/` **and** the rebuilt `index.html`
+3. Commit the source **and** the rebuilt `index.html`
 4. GitHub Pages redeploys within a minute
 
 ## Installing on an iPad

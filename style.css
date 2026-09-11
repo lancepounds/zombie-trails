@@ -11,7 +11,7 @@
   --phos-faint: #2a3033;
   --tscale: 1;
   --gap: 14px;
-  --fs: calc(15px * var(--tscale));
+  --fs: calc(1rem * var(--tscale));
   color-scheme: dark;
 }
 
@@ -102,8 +102,12 @@ b, strong { font-weight: 700; }
 /* ---------- menus ---------- */
 .menu { list-style: none; margin: var(--gap) 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .menu.compact { margin-top: 0; }
+.road-note { border-left: 2px solid var(--phos-dim); padding: 6px 10px; margin-bottom: 12px; }
+.road-note p { margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .tube::after { display: none; } }
 .menu .sep { color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); text-transform: uppercase; letter-spacing: 0.12em; padding: 10px 0 2px; }
 button.cmd {
+  min-height: 44px;
   display: flex; align-items: baseline; gap: 10px; width: 100%;
   background: transparent; color: var(--phos);
   border: 1px solid transparent;
@@ -119,8 +123,8 @@ button.cmd .num {
 button.cmd .lbl { flex: 1 1 auto; }
 button.cmd .lbl { white-space: normal; }
 button.cmd .hint {
-  flex: 0 0 auto; color: var(--phos-dimmer); font-size: calc(12px * var(--tscale));
-  text-align: right; white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis;
+  flex: 0 1 46%; color: var(--phos-dim); font-size: calc(14px * var(--tscale));
+  text-align: right; white-space: normal; max-width: 46%; overflow-wrap: anywhere;
 }
 button.cmd:hover:not(:disabled), button.cmd:focus-visible {
   background: var(--phos); color: var(--ink); outline: none;
