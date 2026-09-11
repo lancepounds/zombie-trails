@@ -17,7 +17,38 @@ difficult choices, and dry humor. Guide five survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen
 that journey without turning it into a different kind of game.
 
-## What's new in v1.3
+## What's new in v1.4: the road atlas
+
+- A larger, sharp monochrome map with directly selectable stops, state boundaries,
+  and a steady marker for your position between towns.
+- Four zoom levels, **Your position** and **Whole route** controls, and a scrollable
+  map on narrow screens so labels remain legible.
+- Distinct marks for roads traveled, roads ahead, a selected route preview, and
+  branches that are no longer reachable.
+- Correct shortest-road distances to each stop, including alternate branches and
+  the unfinished portion of the current leg.
+- Road previews with next-stop mileage, total mileage to Boise, and estimates of
+  travel days, food, and fuel. Previewing does not spend resources or advance time.
+  At your current stop, **Take road** commits the next leg.
+- Keyboard-accessible stops and a matching list with distances and travel status.
+
+The map uses the existing game's coordinates and roads. Straight segments connect
+stops; they do not trace every bend of the real highways. Estimates use current
+conditions and can change as the journey unfolds.
+
+### Map controls
+
+| Control | Action |
+|---|---|
+| Click / tap a stop | Select it and read its route details |
+| Tab, then Enter / Space | Select a focused map stop or activate a button |
+| 1 / 2 | Select the next / previous stop in the east-to-west list |
+| + / − | Zoom in / out |
+| Home | Center on your position |
+| 0 | Show the whole route |
+| Esc | Return to the previous road or arrival screen |
+
+## Added in v1.3
 
 - **People in the wagon:** role-based personalities and short survivor dialogue,
   mixed with roadside atmosphere and radio fragments.
@@ -84,11 +115,12 @@ concatenates it.
 
 | File | Purpose |
 |---|---|
-| `00_core.js` through `90_ui.js` | 18 source modules, loaded in filename order |
+| `00_core.js` through `90_ui.js` | 19 source modules, loaded in filename order |
 | `style.css` | Styling |
 | `icons.json` | Embedded icon data used by the build |
 | `build.js` | Generates the playable HTML, manifest, and app icons |
 | `test-story.js` | Story, save/load, and built-script checks |
+| `test-map.js` | Distances, branch states, route previews, estimates, and label layout |
 | `sim.js` | Headless campaign simulator |
 | `index.html` | Generated playable game; do not edit by hand |
 
@@ -122,6 +154,7 @@ That rewrites `index.html`. Commit both the source change and the rebuilt file.
 | `65_story.js` | Survivor personalities, atmosphere, supply forecasts, delayed story encounters, and ending remembrances |
 | `70_scavenge.js` | Scavenging, menu and minigame |
 | `80_render.js` | The monochrome renderer, bitmap font, the map, ~80 scenes |
+| `82_atlas.js` | Interactive atlas, shortest paths to stops, leg estimates, and SVG layout |
 | `85_save_audio.js` | Save slots, memorials, high scores, square-wave audio |
 | `90_ui.js` | Screens, input, modals |
 
@@ -186,7 +219,7 @@ node build.js
 npm run test:quick
 ```
 
-The quick command runs `test-story.js` and 480 simulated campaigns: 10 runs for
+The quick command runs `test-map.js`, `test-story.js`, and 480 simulated campaigns: 10 runs for
 each combination of four difficulties, three choice policies, and four opening
 loadouts. For 1,920 simulated campaigns and the same story checks:
 
@@ -194,7 +227,10 @@ loadouts. For 1,920 simulated campaigns and the same story checks:
 npm test
 ```
 
-You can also run `node test-story.js` or `node sim.js 40` separately. The story
+You can also run `node test-map.js`, `node test-story.js`, or `node sim.js 40` separately. Map
+checks cover all 289 stop pairs against enumerated routes, partial-leg mileage,
+unavailable branches, walking, preview state preservation, and non-overlapping
+labels at every zoom. The story
 checks cover the six tested encounter paths, resource-gated choices, delayed
 consequences, save/load persistence, display helpers that leave state unchanged,
 and built-script syntax. The simulator reports wins, deaths, supplies, routes,
@@ -206,8 +242,10 @@ report exposed an outdated landmark constant in the simulator; after fixing it,
 100% on Story, 52.5% on Normal, 35% on Hard, and 6.7% on Nightmare. These are
 sample results, not guarantees or a substitute for player feedback.
 
-Browser visual testing has not been performed for this update. Automated
-campaigns do not verify layout, touch interaction, or how the story feels.
+The v1.4 atlas was checked with native SVG renders of the overview, a zoomed view,
+and a journey in progress. Browser testing has not been performed for this update.
+Automated campaigns and native SVG renders do not verify the full page layout,
+touch interaction, or how the story feels.
 
 When changing balance, watch whether scavenging can cover the food consumed
 during a search and whether one cause of death overwhelms the others.
