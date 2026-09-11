@@ -827,96 +827,153 @@ function memberNotes(m) {
 }
 
 function goMap(back) {
-  screen = 'map'; ctxData.art = 'map';
+  screen = 'map'; ctxData.art = null;
   ctxData.mapBack = back || (() => goTravel());
-  ctxData.sel = ctxData.sel && ZT.NODES[ctxData.sel] ? ctxData.sel : S.at;
+  ctxData.sel = S.legTo || S.at;
+  ctxData.mapZoom = 1;
+  ctxData.mapCenter = ZT.position(S);
+  ctxData.mapRoute = null;
   drawMapScreen();
 }
 function mapNodeOrder() {
   return Object.keys(ZT.NODES).sort((a, b) => ZT.NODES[b].lon - ZT.NODES[a].lon);
 }
-function drawMapScreen() {
+function selectMapStop(id, focus) {
+  if (!ZT.NODES[id]) return;
+  ctxData.sel = id; ctxData.mapRoute = null; ctxData.mapCenter = ZT.NODES[id];
+  ZT.Audio.move(); drawMapScreen(focus);
+}
+function drawMapScreen(focus) {
   const ids = mapNodeOrder();
   const sel = ctxData.sel;
   const n = ZT.NODES[sel];
-  const pos = ZT.position(S);
   const leg = ZT.currentLeg(S);
   const here = leg
-    ? `On ${leg.road}, ${Math.round(S.legMiles)} of ${leg.miles} miles from ${ZT.NODES[S.at].name} to ${ZT.NODES[leg.to].name}, heading ${ZT.heading(S)}.`
+    ? `${Math.round(S.legMiles)} miles beyond ${ZT.NODES[S.at].name}, on ${leg.road}.`
     : `Stopped at ${ZT.NODES[S.at].name}, ${ZT.NODES[S.at].sub}.`;
-  const dist = distanceFromYou(sel);
-  const items = [
-    { label: 'Next place', key: '1', hint: 'select →' },
-    { label: 'Previous place', key: '2', hint: '← select' },
-    { label: 'Back to the road', key: 'Esc' },
-  ];
+  const status = ZT.Atlas.status(S, sel);
+  const approach = ZT.Atlas.fromYou(S, sel);
+  const outgoing = ZT.legsFrom(sel);
+  const canChoose = !S.legTo && sel === S.at && !S.over;
+  const zooms = [1, 1.6, 2.5, 4], zi = zooms.indexOf(ctxData.mapZoom);
+  const priorScroll = $('atlas-scroll') ? $('atlas-scroll').scrollLeft : null;
+  const listScroll = $('atlas-places') ? $('atlas-places').scrollTop : 0;
+  const selectionText = status === 'here' ? 'You are here.' : status === 'passed' ? 'This stop is behind you on your traveled route.' :
+    status === 'off' ? 'This branch is no longer reachable on the roads ahead.' :
+    `${Math.round(approach.miles)} miles ahead by the shortest available road.`;
+  const preview = ZT.Atlas.preview(S, sel, ctxData.mapRoute);
+  const incoming = approach && approach.legs[approach.legs.length - 1];
+  const fuelForLeg = incoming ? ZT.Atlas.legEstimate(S, incoming) : null;
+  const need = fuelForLeg && sel === S.legTo ? fuelForLeg : null;
+  const routeCards = outgoing.map(l => {
+    const e = ZT.Atlas.legEstimate(S, l), active = ctxData.mapRoute === l.to;
+    const to = ZT.NODES[l.to], total = l.miles + ZT.distToEnd(l.to);
+    return `<section class="atlas-road-card${active ? ' chosen' : ''}">
+      <h3>Via ${esc(to.name)}</h3><p>${esc(l.road)}</p>
+      <dl class="atlas-estimates"><div><dt>Next stop</dt><dd>${l.miles} mi</dd></div><div><dt>To Boise*</dt><dd>${total} mi</dd></div>
+      <div><dt>Driving / walking</dt><dd>~${e.days} days</dd></div><div><dt>Food for this leg</dt><dd>~${Math.ceil(e.food)} lb</dd></div>
+      <div><dt>Fuel for this leg</dt><dd>${e.fuel === null ? 'On foot' : '~' + e.fuel.toFixed(1) + ' gal'}</dd></div><div><dt>Local dead</dt><dd>${e.dead}</dd></div></dl>
+      <p class="dim">${esc(ZT.LEG_NOTE[ZT.Atlas.key(l)] || e.surface)}</p>
+      ${canChoose && e.fuel !== null && e.fuel > S.inv.fuel ? '<p class="atlas-warning">You will need more fuel to finish this leg.</p>' : ''}
+      ${canChoose && e.food > S.inv.food ? '<p class="atlas-warning">Plan to find more food before the next stop.</p>' : ''}
+      <div class="atlas-card-actions">
+        ${approach ? `<button class="atlas-button" data-preview-road="${l.to}" aria-pressed="${active}">${active ? 'Clear preview' : 'Preview this road'}</button>` : ''}
+        ${canChoose ? `<button class="atlas-button" data-take-road="${l.to}">Take road to ${esc(to.name)}</button>` : ''}
+      </div></section>`;
+  }).join('');
   const root = render(`
     ${statusLine()}
-    ${sceneHTML('Map of the route from Omaha to Boise, showing your position')}
-    <div class="mapwrap">
-      <div class="mapinfo">
-        <h2>${esc(n.name)} <span class="sub">${esc(n.sub)}</span></h2>
-        <table class="kv small-table">
-          <tr><th scope="row">Position</th><td>${fmtLat(pos.lat)}, ${fmtLon(pos.lon)}</td></tr>
-          <tr><th scope="row">You are</th><td>${esc(here)}</td></tr>
-          <tr><th scope="row">${esc(n.name)}</th><td>${esc(dist)}</td></tr>
-          <tr><th scope="row">Boise</th><td>${Math.round(ZT.milesToEnd(S))} miles by the shortest road</td></tr>
-        </table>
-        <p class="dim small">${esc(ZT.NODE_TEXT[sel] ? firstSentence(ZT.NODE_TEXT[sel]) : '')}</p>
-        ${menuHTML(items, { compact: true })}
-        <p class="foot">${TOUCH ? 'Tap a place in the list' : 'Click a place in the list, or use 1 and 2'}. Solid lines are roads you have driven, dotted lines are roads ahead.</p>
+    <div class="atlas">
+      <header class="atlas-heading"><div><h1>ROAD ATLAS</h1><p>${esc(here)}</p></div>
+        <button class="atlas-button" id="atlas-back">Back to the road <kbd>Esc</kbd></button></header>
+      <dl class="atlas-summary"><div><dt>Traveled</dt><dd>${Math.round(S.miles)} mi</dd></div>
+        <div><dt>${leg ? 'Next: ' + esc(ZT.NODES[leg.to].name) : 'At ' + esc(ZT.NODES[S.at].name)}</dt><dd>${leg ? ZT.milesToNext(S) + ' mi' : 'Choose a road'}</dd></div>
+        <div><dt>Shortest road to Boise</dt><dd>${Math.round(ZT.milesToEnd(S))} mi</dd></div></dl>
+      <nav class="atlas-toolbar" aria-label="Map controls">
+        <button class="atlas-button" id="atlas-locate">Your position <kbd>Home</kbd></button>
+        <button class="atlas-button" id="atlas-fit">Whole route <kbd>0</kbd></button>
+        <button class="atlas-button" id="atlas-zoom-out" aria-label="Zoom out"${zi === 0 ? ' disabled' : ''}>−</button>
+        <span aria-live="polite">${ctxData.mapZoom}×</span>
+        <button class="atlas-button" id="atlas-zoom-in" aria-label="Zoom in"${zi === zooms.length - 1 ? ' disabled' : ''}>+</button>
+      </nav>
+      <div class="atlas-scroll" id="atlas-scroll" tabindex="0" role="region" aria-label="Interactive map; scroll horizontally on narrow screens">
+        ${ZT.Atlas.svg(S, { selected: sel, zoom: ctxData.mapZoom, center: ctxData.mapCenter, route: ctxData.mapRoute })}
       </div>
-      <div class="maplist">
-        <h3>Places on the route</h3>
-        <ul class="places">
+      <ul class="atlas-legend" aria-label="Map legend"><li><span class="atlas-key-you">▲</span> Your position</li>
+        <li><span class="atlas-key-line traveled"></span> Traveled</li><li><span class="atlas-key-line"></span> Road ahead</li>
+        <li><span class="atlas-key-line preview"></span> Preview</li><li><span class="atlas-key-line off"></span> Other branch</li><li>◇ Road choice</li></ul>
+      <p class="atlas-help">Select a named stop on the map or in the list. Zoom centers on the selected stop; “Your position” centers on you. On a narrow screen, scroll the map sideways. Lines join game stops; road mileages are shown below.</p>
+      <div class="atlas-detail-grid">
+      <section class="atlas-inspector" aria-labelledby="atlas-selected">
+        <div class="atlas-stop-heading"><h2 id="atlas-selected">${esc(n.name)}</h2><span>${esc(n.sub)}</span></div>
+        <p class="atlas-distance" role="status">${esc(selectionText)}</p>
+        <p>${esc(ZT.NODE_TEXT[sel] ? firstSentence(ZT.NODE_TEXT[sel]) : '')}</p>
+        ${need ? `<p class="dim">Current leg remaining: ~${need.days} days${need.fuel === null ? ' on foot' : ', ~' + need.fuel.toFixed(1) + ' gallons'} at today's conditions.</p>` : ''}
+        ${preview.length ? `<p class="atlas-itinerary"><b>Map preview:</b> ${esc([preview[0].from].concat(preview.map(l => l.to)).map(id => ZT.NODES[id].name).join(' → '))}</p>` : ''}
+        ${outgoing.length ? `<h2>${canChoose ? 'Choose your road' : 'Roads from this stop'}</h2>
+          ${!canChoose ? `<p class="dim">${status === 'ahead' ? 'You can choose a road when you reach this stop.' : 'These roads are shown for reference. Your current journey continues ahead.'}</p>` : '<p class="dim">Preview to compare. “Take road” commits your next leg.</p>'}
+          <div class="atlas-road-cards">${routeCards}</div>
+          <p class="atlas-help">*Total from ${esc(n.name)} to Boise via this road, using the shortest onward branches. Days, food, and fuel are estimates for the next leg only, using today’s pace, weather, load, and party. Delays, scavenging, and repairs add time; local dead describes the region, not a guaranteed encounter.</p>` : '<p class="road-note">Boise is the end of the trail.</p>'}
+      </section>
+      <section class="atlas-directory" aria-label="All stops">
+        <h2>Stops from east to west</h2><p class="dim">Distances follow the roads still open to you.</p>
+        <div class="atlas-select-controls"><button class="atlas-button" id="atlas-prev">Previous <kbd>2</kbd></button><button class="atlas-button" id="atlas-next">Next <kbd>1</kbd></button></div>
+        <ul class="atlas-places" id="atlas-places">
           ${ids.map((id) => {
             const p2 = ZT.NODES[id];
-            const seen = S.seen && S.seen[id];
-            const isYou = id === S.at;
-            return `<li><button class="place${id === sel ? ' on' : ''}" data-id="${id}" aria-pressed="${id === sel}">
-              <span class="pmark">${isYou ? '\u25b2' : seen ? '\u25a0' : '\u25a1'}</span>
-              <span class="pname">${esc(p2.name)}</span>
-              <span class="pdist">${esc(shortDist(id))}</span>
+            const st = ZT.Atlas.status(S, id);
+            return `<li><button class="atlas-place${id === sel ? ' on' : ''}" data-list-stop="${id}" aria-pressed="${id === sel}">
+              <span aria-hidden="true">${st === 'here' ? '▲' : st === 'passed' ? '■' : p2.kind === 'fork' ? '◇' : '□'}</span>
+              <span>${esc(p2.name)}<small>${esc(ZT.Atlas.distanceText(S, id))}</small></span>
             </button></li>`;
           }).join('')}
         </ul>
-      </div>
+      </section></div>
     </div>`);
-  root.querySelectorAll('button.place').forEach((b) => b.addEventListener('click', () => {
-    ctxData.sel = b.dataset.id; ZT.Audio.move(); drawMapScreen();
-  }));
-  bindMenu(root, items, (i) => {
-    if (i === 2) return ctxData.mapBack();
-    const cur = ids.indexOf(ctxData.sel);
-    ctxData.sel = ids[(cur + (i === 0 ? 1 : -1) + ids.length) % ids.length];
-    drawMapScreen();
+  const bind = (id, fn) => $(id).addEventListener('click', fn);
+  const changeZoom = d => { ctxData.mapZoom = zooms[ZT.clamp(zi + d, 0, zooms.length - 1)]; drawMapScreen('#atlas-zoom-' + (d > 0 ? 'in' : 'out')); };
+  const locate = () => { ctxData.sel = S.legTo || S.at; ctxData.mapRoute = null; ctxData.mapCenter = ZT.position(S); drawMapScreen('#atlas-locate'); };
+  const fit = () => { ctxData.mapZoom = 1; drawMapScreen('#atlas-fit'); };
+  const move = d => selectMapStop(ids[(ids.indexOf(sel) + d + ids.length) % ids.length], '#atlas-' + (d > 0 ? 'next' : 'prev'));
+  bind('atlas-back', () => ctxData.mapBack()); bind('atlas-fit', fit); bind('atlas-locate', locate);
+  bind('atlas-zoom-in', () => changeZoom(1)); bind('atlas-zoom-out', () => changeZoom(-1));
+  bind('atlas-next', () => move(1)); bind('atlas-prev', () => move(-1));
+  root.querySelectorAll('[data-map-stop], [data-list-stop]').forEach(b => {
+    const attr = b.hasAttribute('data-map-stop') ? 'data-map-stop' : 'data-list-stop';
+    const id = b.getAttribute(attr);
+    b.addEventListener('click', () => selectMapStop(id, `[${attr}="${id}"]`));
+    if (attr === 'data-map-stop') b.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); selectMapStop(id, `[${attr}="${id}"]`); }
+    });
   });
-  keyMap['escape'] = () => ctxData.mapBack();
-  keyMap['arrowright'] = () => { const cur = ids.indexOf(ctxData.sel); ctxData.sel = ids[(cur + 1) % ids.length]; ZT.Audio.move(); drawMapScreen(); };
-  keyMap['arrowleft'] = () => { const cur = ids.indexOf(ctxData.sel); ctxData.sel = ids[(cur - 1 + ids.length) % ids.length]; ZT.Audio.move(); drawMapScreen(); };
+  root.querySelectorAll('[data-preview-road]').forEach(b => b.addEventListener('click', () => {
+    ctxData.mapRoute = ctxData.mapRoute === b.dataset.previewRoad ? null : b.dataset.previewRoad;
+    drawMapScreen(`[data-preview-road="${b.dataset.previewRoad}"]`);
+  }));
+  root.querySelectorAll('[data-take-road]').forEach(b => b.addEventListener('click', () => {
+    if (canChoose && ZT.Travel.takeLeg(S, b.dataset.takeRoad)) { ZT.Save.save(S); goTravel(); }
+  }));
+  keyMap = { escape: () => ctxData.mapBack(), '1': () => move(1), '2': () => move(-1), home: locate,
+    '0': fit, '+': () => changeZoom(1), '=': () => changeZoom(1), '-': () => changeZoom(-1) };
+  const scroll = $('atlas-scroll');
+  scroll.scrollLeft = priorScroll === null ? ZT.Atlas.layout(S, { zoom: ctxData.mapZoom, center: ctxData.mapCenter, selected: sel }).you.x / ZT.Atlas.width * scroll.scrollWidth - scroll.clientWidth / 2 : priorScroll;
+  $('atlas-places').scrollTop = listScroll;
+  if (focus) {
+    const target = root.querySelector(focus);
+    if (target && !target.disabled) target.focus({ preventScroll: true });
+    else if (target) $('atlas-fit').focus({ preventScroll: true });
+    if (target && (/data-(map|list)-stop/.test(focus) || focus === '#atlas-next' || focus === '#atlas-prev')) {
+      const stop = root.querySelector(`[data-map-stop="${sel}"]`);
+      const marker = stop.querySelector('.atlas-hit').getBoundingClientRect(), viewport = scroll.getBoundingClientRect();
+      if (marker.left < viewport.left || marker.right > viewport.right) scroll.scrollLeft += (marker.left + marker.right - viewport.left - viewport.right) / 2;
+    }
+  }
+  if (focus === '#atlas-locate') {
+    const x = ZT.Atlas.layout(S, { zoom: ctxData.mapZoom, center: ctxData.mapCenter, selected: sel }).you.x;
+    scroll.scrollLeft = x / ZT.Atlas.width * scroll.scrollWidth - scroll.clientWidth / 2;
+  }
 }
 function firstSentence(str) { const m = str.match(/^[^.]+\.\s*[^.]+\./); return m ? m[0] : str.slice(0, 160); }
-function fmtLat(v) { return Math.abs(v).toFixed(2) + '\u00b0 N'; }
-function fmtLon(v) { return Math.abs(v).toFixed(2) + '\u00b0 W'; }
-function aheadMiles(id) {
-  const from = S.legTo || S.at;
-  if (!ZT.reachable(from, id)) return null;
-  const d = ZT.distToEnd(from) - ZT.distToEnd(id) + (S.legTo ? ZT.currentLeg(S).miles - S.legMiles : 0);
-  return d > 0 ? Math.round(d) : 0;
-}
-function distanceFromYou(id) {
-  if (id === S.at && !S.legTo) return 'you are here';
-  if (S.seen && S.seen[id]) return 'behind you';
-  const d = aheadMiles(id);
-  if (d === null) return 'no longer on any road from here';
-  return `about ${d} miles ahead by the shortest road`;
-}
-function shortDist(id) {
-  if (id === S.at && !S.legTo) return 'here';
-  if (S.seen && S.seen[id]) return 'passed';
-  const d = aheadMiles(id);
-  return d === null ? 'off route' : d + ' mi';
-}
 
 function goPace() {
   screen = 'pace'; ctxData.art = 'road';
