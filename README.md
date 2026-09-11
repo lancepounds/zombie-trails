@@ -4,9 +4,75 @@ A 1980s-style trail-survival game. Omaha, Nebraska to Boise, Idaho — about 1,3
 miles of real road, up the Platte, over the Continental Divide, and down the Snake.
 Five survivors, one station wagon, and three real forks in the road.
 
-**Play:** https://lancepounds.github.io/zombie-trails/
+**[Play Zombie Trails](https://lancepounds.github.io/zombie-trails/)**
 
-Monochrome, menu-driven, keyboard and touch. No frameworks, no dependencies.
+Monochrome, menu-driven, keyboard and touch. Plain JavaScript with no framework or
+npm dependencies. The page requests fonts from Google Fonts and includes local
+monospace fallbacks.
+
+## The heart of the game
+
+Keep it old school: black-and-white scenes, numbered menus, scarce supplies,
+difficult choices, and dry humor. Guide five survivors west, manage the wagon,
+choose roads, scavenge, and decide when to stop. More personality should deepen
+that journey without turning it into a different kind of game.
+
+## What's new in v1.3
+
+- **People in the wagon:** role-based personalities and short survivor dialogue,
+  mixed with roadside atmosphere and radio fragments.
+- **Choices that follow you:** a three-part encounter with Ruth and her family.
+  Helping, taking supplies, trading, making amends, or walking away changes later
+  meetings. These memories are saved with the journey.
+- **Planning before travel:** estimates of full days of food and miles of fuel,
+  plus warnings about urgent needs. Estimates reflect current conditions;
+  weather, encounters, and changes in the party can alter them.
+- **Time to read:** travel pauses after each day by default. Continuous travel is
+  still available in Settings.
+- **Comfortable controls:** larger menu buttons, browser zoom, text-size options,
+  and Settings accessible from the road. New players default to menu-only
+  scavenging; the optional timed minigame is still available.
+- **A personal ending:** individual survivor remembrances and a record of the
+  choices that followed the party.
+
+Existing saved preferences are preserved. Personalities currently follow each
+survivor's role; they are not a separate relationship or skill-progression system.
+
+## Playing and controls
+
+1. Open the game, name your party, choose roles and difficulty, and buy supplies.
+2. Choose a road and travel. Check the food and fuel estimates before committing.
+3. Use the road menu to rest, scavenge, treat wounds, repair, or read the journal.
+
+| Control | Action |
+|---|---|
+| Click or tap | Choose a menu option |
+| Displayed number or letter | Activate that option where a single-key shortcut is shown |
+| Up / Down arrows | Move between menu buttons |
+| Enter / Space | Activate the focused button |
+| Esc | Go back or stop travel where offered |
+| S on the road menu | Open Settings |
+| 0 on the road menu | Save and quit options |
+
+Settings include sound, reduced flashing and scanlines, text size, menu-only or
+minigame scavenging, and day-by-day or continuous travel. No timed input is needed
+for menu-only scavenging.
+
+Saves, preferences, memorials, and scores are stored in the current browser.
+Returning to the road screen saves the journey; use **Save and quit** before
+leaving. Clearing browser storage removes local records. Saves do not sync
+between devices.
+
+## Run locally
+
+Open `index.html` in a browser to play the built game. To edit and rebuild it,
+install Node.js, clone this repository, then run:
+
+```bash
+node build.js
+```
+
+No `npm install` step is required. Reopen or refresh `index.html` after building.
 
 ---
 
@@ -16,13 +82,15 @@ Monochrome, menu-driven, keyboard and touch. No frameworks, no dependencies.
 **generated**, not edited. The readable source is in the repository root, and `build.js`
 concatenates it.
 
-```
-00_core.js … 90_ui.js   the 18 modules, in load order
-style.css                   all styling
-build.js                        concatenates source into index.html
-sim.js                     the balance simulator
-index.html                      BUILT — do not edit by hand
-```
+| File | Purpose |
+|---|---|
+| `00_core.js` through `90_ui.js` | 18 source modules, loaded in filename order |
+| `style.css` | Styling |
+| `icons.json` | Embedded icon data used by the build |
+| `build.js` | Generates the playable HTML, manifest, and app icons |
+| `test-story.js` | Story, save/load, and built-script checks |
+| `sim.js` | Headless campaign simulator |
+| `index.html` | Generated playable game; do not edit by hand |
 
 To rebuild after changing the source:
 
@@ -51,6 +119,7 @@ That rewrites `index.html`. Commit both the source change and the rebuilt file.
 | `62_ev_vehicle_health.js` | The wagon, and the bodies in it |
 | `63_ev_people_camp.js` | Other people, camp nights, rare events |
 | `64_landmarks.js` | Arrivals at each real place |
+| `65_story.js` | Survivor personalities, atmosphere, supply forecasts, delayed story encounters, and ending remembrances |
 | `70_scavenge.js` | Scavenging, menu and minigame |
 | `80_render.js` | The monochrome renderer, bitmap font, the map, ~80 scenes |
 | `85_save_audio.js` | Save slots, memorials, high scores, square-wave audio |
@@ -61,7 +130,9 @@ That rewrites `index.html`. Commit both the source change and the rebuilt file.
 ## Adding an event
 
 This is the main way to grow the game, and it needs no engine changes. Add an
-object to any `6x_*.js` file and rebuild.
+object inside the relevant `ZT.Events.add([...])` list in `60_ev_road.js`
+through `63_ev_people_camp.js`, then rebuild. Landmark events live in
+`64_landmarks.js`; the delayed Ruth encounters live in `65_story.js`.
 
 ```js
 {
@@ -88,7 +159,11 @@ object to any `6x_*.js` file and rebuild.
 ```
 
 Return `{ text, then: 'other_event_id' }` from a `do` to chain a second beat —
-that is how the landmark set pieces work.
+that is how the landmark set pieces work. For consequences days later, follow
+`ZT.Story.due` and `ZT.Story.remember` in `65_story.js`: the story checks both
+elapsed days and distance, keeps the encounter out of the ordinary random pool,
+and records the result in saveable flags. Keep display-only helpers free of
+state changes and random-number consumption.
 
 **Region ids:** `missouri, platte, sandhills, panhandle, laramie, powder, divide,
 bear, wasatch, lava, snake, owyhee`
@@ -102,27 +177,40 @@ memorable as a horde. Humour works best delivered flat.
 
 ---
 
-## Checking the balance
+## Validation and balance
+
+Build first so the tests inspect the current playable file:
 
 ```bash
-node sim.js 40
+node build.js
+npm run test:quick
 ```
 
-Plays full campaigns headlessly across four difficulties, three choice policies,
-three route policies and four opening loadouts — then reports win rate, median day
-and mileage, deaths by cause, which supply ran out, which roads got taken, and any
-event or choice never exercised. Run it after content changes; it catches crashes
-and balance drift that playing never will.
+The quick command runs `test-story.js` and 480 simulated campaigns: 10 runs for
+each combination of four difficulties, three choice policies, and four opening
+loadouts. For 1,920 simulated campaigns and the same story checks:
 
-Current targets: Story ~100%, Normal ~59%, Hard ~36%, Nightmare ~6%.
+```bash
+npm test
+```
 
-Two findings worth not re-learning the hard way:
+You can also run `node test-story.js` or `node sim.js 40` separately. The story
+checks cover the six tested encounter paths, resource-gated choices, delayed
+consequences, save/load persistence, display helpers that leave state unchanged,
+and built-script syntax. The simulator reports wins, deaths, supplies, routes,
+and event coverage; it exits unsuccessfully if campaign crashes occur.
 
-- **A scavenge day must net more food than the party eats that day**, or the verb
-  is net-negative and every run starves.
-- **Only infection had a large per-day health drain**, so it once caused 97% of
-  deaths. Weather, fatigue, illness and injury all need to bite for the causes to
-  spread out.
+During v1.3 development, 480 campaigns completed with zero game crashes. Their
+report exposed an outdated landmark constant in the simulator; after fixing it,
+48 further campaigns and the focused checks passed. The 480-run sample won
+100% on Story, 52.5% on Normal, 35% on Hard, and 6.7% on Nightmare. These are
+sample results, not guarantees or a substitute for player feedback.
+
+Browser visual testing has not been performed for this update. Automated
+campaigns do not verify layout, touch interaction, or how the story feels.
+
+When changing balance, watch whether scavenging can cover the food consumed
+during a search and whether one cause of death overwhelms the others.
 
 ---
 
@@ -130,11 +218,17 @@ Two findings worth not re-learning the hard way:
 
 1. Edit the numbered JavaScript modules or `style.css`
 2. `node build.js`
-3. Commit the source **and** the rebuilt `index.html`
-4. GitHub Pages redeploys within a minute
+3. Run the relevant checks above
+4. Commit the source **and** the rebuilt `index.html`; include other generated assets if they changed
+5. Merge the update into `main`
+6. Check **Actions → pages build and deployment** for a successful publication
+
+README-only changes do not require rebuilding the game. Publication time varies;
+refresh the game after deployment if the previous version is still displayed.
 
 ## Installing on an iPad
 
-Open the Pages URL in Safari → Share → **Add to Home Screen**. Worth doing beyond
-the icon: Safari clears a site's saved data after seven days without a visit, which
-would erase a journey in progress. Home-screen apps are largely exempt.
+Open the [game](https://lancepounds.github.io/zombie-trails/) in Safari, then choose
+**Share → Add to Home Screen**. Saves remain local to that browser or installed
+web app; adding an icon is not a cloud backup. This project has no service
+worker, so it does not guarantee offline loading.
