@@ -1,6 +1,6 @@
 {
   "name": "zombie-trails",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "A 1980s-style trail-survival game: Omaha to Boise",
   "private": true,
   "scripts": {

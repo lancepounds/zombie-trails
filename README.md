@@ -17,7 +17,16 @@ difficult choices, and dry humor. Guide five survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen
 that journey without turning it into a different kind of game.
 
-## What's new in v1.4: the road atlas
+## What's new in v1.4.2: the retro look throughout
+
+The atlas's paper-white and black-ink palette now carries through the title,
+menus, party setup, shop, travel, encounters, journal, and ending. Pixel-art
+scenes and the scavenging minigame use the same ink and paper colors, with the
+original silhouettes and dither patterns. Inverse highlights, stippled frames,
+and matching app icons complete the monochrome look. Scanlines stay inside the
+artwork so menu text remains clear.
+
+## Added in v1.4: the road atlas
 
 - **v1.4.1 retro palette:** paper-white backgrounds, black ink, stippled map
   borders, and inverse selections give the atlas a classic monochrome computer
@@ -246,9 +255,12 @@ report exposed an outdated landmark constant in the simulator; after fixing it,
 sample results, not guarantees or a substitute for player feedback.
 
 The v1.4 atlas and v1.4.1 palette were checked with native SVG renders of the
-overview, a zoomed view, and a journey in progress. Browser testing has not been performed for these updates.
-Automated campaigns and native SVG renders do not verify the full page layout,
-touch interaction, or how the story feels.
+overview, a zoomed view, and a journey in progress. For v1.4.2, all 101 scene
+renderers ran without scene errors in native Canvas with scanlines on and off;
+representative scenes, the scavenging view, and the app icon were visually checked.
+Browser testing has not been performed for these visual updates. Automated
+campaigns and native renders do not verify the full page layout, touch interaction,
+or how the story feels.
 
 When changing balance, watch whether scavenging can cover the food consumed
 during a search and whether one cause of death overwhelms the others.
