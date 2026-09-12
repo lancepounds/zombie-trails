@@ -1,25 +1,29 @@
-/* ZOMBIE TRAILS — a monochrome monitor and a black-ink road atlas.
-   Emphasis is inverse video, the way it was on a machine that only had
-   two of anything. The map opens like a sheet of paper inside the monitor. */
+/* ZOMBIE TRAILS — black ink on paper, like a classic monochrome computer.
+   The interface, atlas, and pixel art share these neutral tones. Emphasis is
+   inverse video, sharp frames, and stippling rather than colored accents. */
 
 :root {
-  --ink: #06080a;          /* the tube when it is off */
-  --ink-2: #0d1113;        /* recessed wells */
-  --phos: #e7ece8;         /* phosphor white, a touch cool */
-  --phos-dim: #98a29d;
-  --phos-dimmer: #58615d;
-  --phos-faint: #2a3033;
+  /* Legacy token names: ink is the paper surface; phos is the printed ink. */
+  --ink: #e8e8e8;
+  --ink-2: #d8d8d8;
+  --phos: #181818;
+  --phos-dim: #505050;
+  --phos-dimmer: #686868;
+  --phos-faint: #b0b0b0;
   --tscale: 1;
   --gap: 14px;
   --fs: calc(1rem * var(--tscale));
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
+::selection { background: var(--phos); color: var(--ink); }
 
 body {
   margin: 0;
-  background: var(--ink);
+  background: var(--ink-2);
+  background-image: radial-gradient(var(--phos-dimmer) .65px, transparent .65px);
+  background-size: 4px 4px;
   color: var(--phos);
   font-family: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   font-size: var(--fs);
@@ -29,21 +33,20 @@ body {
   min-height: 100vh;
 }
 
-/* ---------- the monitor ---------- */
+/* ---------- the monochrome window ---------- */
 .tube {
   max-width: 1120px;
   margin: 0 auto;
   background: var(--ink);
-  border: 2px solid var(--phos-faint);
+  border: 4px double var(--phos);
   padding: clamp(10px, 2vw, 22px);
   position: relative;
 }
-.tube::after { /* faint scanlines over the whole frame */
+.tube::after { /* a stippled frame, clear of all text and controls */
   content: '';
-  position: absolute; inset: 0;
+  position: absolute; inset: 5px;
   pointer-events: none;
-  background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.20) 0 1px, transparent 1px 3px);
-  mix-blend-mode: multiply;
+  border: 1px dotted var(--phos-faint);
 }
 .tube.reduced::after { display: none; }
 
@@ -91,12 +94,11 @@ b, strong { font-weight: 700; }
 .bar b { font-weight: 700; margin-right: 6px; }
 
 /* ---------- scene ----------
-   The picture is a framed window, shrink-wrapped to the canvas, not a wide black
-   band with a small image floating in it. */
+   The picture is a framed window, shrink-wrapped to the canvas. */
 .scene { display: flex; justify-content: center; margin-bottom: var(--gap); line-height: 0; }
 .scene canvas {
   display: block; max-width: 100%; image-rendering: pixelated;
-  background: #000; border: 1px solid var(--phos-faint);
+  background: var(--ink); border: 3px double var(--phos);
 }
 
 /* ---------- menus ---------- */
@@ -166,7 +168,7 @@ caption { text-align: left; font-family: 'Silkscreen', monospace; font-size: cal
 th, td { text-align: left; padding: 3px 8px 3px 0; vertical-align: top; }
 thead th { color: var(--phos-dim); font-weight: 400; font-size: calc(11px * var(--tscale)); text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--phos-faint); }
 tfoot th, tfoot td { border-top: 1px solid var(--phos-faint); padding-top: 6px; }
-tbody tr + tr th, tbody tr + tr td { border-top: 1px solid rgba(88,97,93,0.16); }
+tbody tr + tr th, tbody tr + tr td { border-top: 1px solid var(--phos-faint); }
 .num, .r { text-align: right; font-variant-numeric: tabular-nums; }
 td.r, th.r { text-align: right; }
 tr.dead th, tr.dead td { color: var(--phos-dimmer); text-decoration: line-through; text-decoration-thickness: 1px; }
@@ -215,6 +217,7 @@ input, select {
   font: inherit; font-size: calc(13px * var(--tscale)); padding: 3px 6px; width: 100%; max-width: 190px;
 }
 input:focus, select:focus { outline: 2px solid var(--phos); outline-offset: 1px; }
+input::placeholder { color: var(--phos-dim); opacity: 1; }
 .party-setup td { padding: 4px 10px 4px 0; }
 .diffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 8px; }
 button.diff {
@@ -255,7 +258,7 @@ tr.here th { background: var(--phos); color: var(--ink); }
 ul.log { list-style: none; margin: 0; padding: 0; font-size: calc(13px * var(--tscale)); }
 ul.log li {
   display: grid; grid-template-columns: 11em 1fr; gap: 0 12px; align-items: baseline;
-  padding: 2px 0; color: var(--phos-dim); border-bottom: 1px solid rgba(88,97,93,0.14);
+  padding: 2px 0; color: var(--phos-dim); border-bottom: 1px solid var(--phos-faint);
 }
 ul.log li.notable { color: var(--phos); }
 ul.log .when { color: var(--phos-dimmer); font-size: calc(11px * var(--tscale)); white-space: nowrap; }
@@ -320,19 +323,11 @@ button.p:active, button.p:focus-visible { background: var(--phos); color: var(--
 
 /* ---------- the map screen ---------- */
 .atlas {
-  /* Local paper / ink palette; SVG colors in 82_atlas.js match these tones. */
-  --ink: #e8e8e8;
-  --ink-2: #d8d8d8;
-  --phos: #181818;
-  --phos-dim: #505050;
-  --phos-dimmer: #686868;
-  --phos-faint: #b0b0b0;
   min-width: 0;
   padding: clamp(10px, 2vw, 20px);
   border: 4px double var(--phos);
   background: var(--ink);
   color: var(--phos);
-  color-scheme: light;
 }
 .atlas-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .atlas-heading h1 { font-size: calc(21px * var(--tscale)); margin-bottom: 4px; }

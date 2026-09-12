@@ -10,14 +10,14 @@ const order = fs.readdirSync(SRC).filter((f) => /^\d+_.*\.js$/.test(f)).sort();
 const js = order.map((f) => `/* ===== ${f} ===== */\n` + fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
 const css = fs.readFileSync(path.join(SRC, 'style.css'), 'utf8');
 const icons = JSON.parse(fs.readFileSync(path.join(SRC, 'icons.json'), 'utf8'));
-const VERSION = 'v1.4.1';
+const VERSION = 'v1.4.2';
 
 const manifest = {
   name: 'Zombie Trails',
   short_name: 'Zombie Trails',
   description: 'Omaha to Boise. Five survivors, a station wagon, and the dead on every road.',
   start_url: './', scope: './', display: 'standalone', orientation: 'any',
-  background_color: '#06080a', theme_color: '#06080a',
+  background_color: '#e8e8e8', theme_color: '#e8e8e8',
   icons: [
     { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
     { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
@@ -29,12 +29,12 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#06080a">
-<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#e8e8e8">
+<meta name="color-scheme" content="light">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Zombie Trails">
 <link rel="apple-touch-icon" href="data:image/png;base64,${icons['180']}">
 <link rel="icon" href="data:image/png;base64,${icons['192']}">

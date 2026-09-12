@@ -1,9 +1,11 @@
 /* ZOMBIE TRAILS — monochrome renderer.
    Everything is drawn into a 320x160 buffer and blitted with nearest-neighbour
-   upscaling. Palette: black, white, and two dithered greys. */
+   upscaling. Palette: black ink on paper, with dithered shading. */
 'use strict';
 ZT.R = (function () {
 const W = 320, H = 160;
+// Match the shared interface and atlas palette.
+const INK = '#181818', PAPER = '#e8e8e8';
 let buf = null, bctx = null;
 const patterns = {};
 
@@ -21,21 +23,21 @@ function ensure() {
     const p = document.createElement('canvas');
     p.width = bits[0].length; p.height = bits.length;
     const c = p.getContext('2d');
-    c.fillStyle = '#fff';
+    c.fillStyle = INK;
     for (let y = 0; y < bits.length; y++) for (let x = 0; x < bits[0].length; x++) if (bits[y][x]) c.fillRect(x, y, 1, 1);
     patterns[name] = p;
   }
 }
 
 /* ---------- primitives ---------- */
-function clear(c) { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); }
-function px(c, x, y, w, h) { c.fillStyle = '#fff'; c.fillRect(x | 0, y | 0, w || 1, h || 1); }
+function clear(c) { c.fillStyle = PAPER; c.fillRect(0, 0, W, H); }
+function px(c, x, y, w, h) { c.fillStyle = INK; c.fillRect(x | 0, y | 0, w || 1, h || 1); }
 function grey(c, x, y, w, h, level) {
   const p = c.createPattern(patterns[level || 'g50'], 'repeat');
   c.save(); c.fillStyle = p; c.translate(0, 0); c.fillRect(x | 0, y | 0, w | 0, h | 0); c.restore();
 }
 function line(c, x1, y1, x2, y2) {
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   let x = Math.round(x1), y = Math.round(y1);
   const X = Math.round(x2), Y = Math.round(y2);
   const dx = Math.abs(X - x), dy = -Math.abs(Y - y);
@@ -51,16 +53,16 @@ function line(c, x1, y1, x2, y2) {
 }
 function rect(c, x, y, w, h) { px(c, x, y, w, 1); px(c, x, y + h - 1, w, 1); px(c, x, y, 1, h); px(c, x + w - 1, y, 1, h); }
 function circle(c, cx, cy, r, col) {
-  c.fillStyle = col || '#fff';
+  c.fillStyle = col || INK;
   for (let a = 0; a < 64; a++) { const t = (a / 64) * Math.PI * 2; c.fillRect(Math.round(cx + Math.cos(t) * r), Math.round(cy + Math.sin(t) * r), 1, 1); }
 }
 function disc(c, cx, cy, r, col) {
-  c.fillStyle = col || '#fff';
+  c.fillStyle = col || INK;
   for (let y = -r; y <= r; y++) { const w = Math.floor(Math.sqrt(r * r - y * y)); c.fillRect(Math.round(cx - w), Math.round(cy + y), w * 2 + 1, 1); }
 }
 function text(c, str, x, y, scale) {
   scale = scale || 1;
-  c.save(); c.fillStyle = '#fff';
+  c.save(); c.fillStyle = INK;
   c.font = `${6 * scale}px monospace`; c.textBaseline = 'top';
   c.fillText(str, x | 0, y | 0);
   c.restore();
@@ -77,7 +79,7 @@ const GLYPHS = {
 };
 function tw(str) { return str.length * 5 - 1; }
 function bmp(c, str, x, y, col) {
-  c.fillStyle = col || '#fff';
+  c.fillStyle = col || INK;
   str = String(str).toUpperCase();
   for (let i = 0; i < str.length; i++) {
     const g = GLYPHS[str[i]] || GLYPHS[' '];
@@ -91,7 +93,7 @@ function bmp(c, str, x, y, col) {
 function plate(c, str, x, y, align) {
   const w = tw(str);
   const px0 = align === 'r' ? x - w : align === 'c' ? x - Math.round(w / 2) : x;
-  c.fillStyle = '#000'; c.fillRect(px0 - 1, y - 1, w + 2, 7);
+  c.fillStyle = PAPER; c.fillRect(px0 - 1, y - 1, w + 2, 7);
   bmp(c, str, px0, y);
   return px0;
 }
@@ -121,7 +123,7 @@ function skyline(c, seed, baseY, height, density, kind) {
     const gap = 2 + Math.floor(r3 * 14 * (1 - density));
     if (r2 > 0.25) {
       const h = 4 + Math.floor(r2 * height);
-      c.fillStyle = '#000'; c.fillRect(x, baseY - h, w, h);
+      c.fillStyle = PAPER; c.fillRect(x, baseY - h, w, h);
       grey(c, x, baseY - h, w, h, 'g25');
       px(c, x, baseY - h, w, 1);
       px(c, x, baseY - h, 1, h); px(c, x + w - 1, baseY - h, 1, h);
@@ -140,7 +142,7 @@ function trees(c, seed, baseY, scale) {
   }
 }
 function mountains(c, seed, baseY, height) {
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   let x = -10;
   while (x < W + 10) {
     const h = 12 + hash(seed + x * 0.37) * height;
@@ -167,7 +169,7 @@ function poles(c, off, baseY) {
 /* ---------- the wagon ---------- */
 function wagon(c, x, y, frame, dead) {
   // a boxy 1980s station wagon silhouette, 44x18
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   const b = (dx, dy, w, h) => c.fillRect(Math.round(x + dx), Math.round(y + dy), w, h);
   // body
   b(2, 8, 40, 7);
@@ -177,26 +179,26 @@ function wagon(c, x, y, frame, dead) {
   b(8, 1, 22, 1);
   b(10, 0, 4, 1); b(18, 0, 6, 1); b(26, 0, 3, 1);
   // windows (cut out)
-  c.fillStyle = '#000';
+  c.fillStyle = PAPER;
   c.fillRect(Math.round(x + 8), Math.round(y + 4), 8, 4);
   c.fillRect(Math.round(x + 18), Math.round(y + 4), 6, 4);
   c.fillRect(Math.round(x + 26), Math.round(y + 4), 4, 4);
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   // wheels
   const wy = y + 14;
   for (const wx of [x + 7, x + 33]) {
     disc(c, wx + 2, wy + 2, 3);
-    c.fillStyle = '#000';
+    c.fillStyle = PAPER;
     // spokes rotate
     const a = frame * 0.9;
     for (let k = 0; k < 4; k++) {
       const t = a + (k * Math.PI) / 2;
       c.fillRect(Math.round(wx + 2 + Math.cos(t) * 2), Math.round(wy + 2 + Math.sin(t) * 2), 1, 1);
     }
-    c.fillStyle = '#fff';
+    c.fillStyle = INK;
   }
   if (dead) { // broken down: hood up, no wheels turning
-    c.fillStyle = '#fff';
+    c.fillStyle = INK;
     c.fillRect(Math.round(x + 34), Math.round(y + 2), 8, 1);
     c.fillRect(Math.round(x + 41), Math.round(y + 2), 1, 6);
   }
@@ -208,7 +210,7 @@ function walkers(c, x, y, frame, n) {
   }
 }
 function figure(c, x, y, phase, shamble) {
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   const sway = shamble ? Math.sin(phase) * 1 : 0;
   c.fillRect(Math.round(x + 1 + sway), Math.round(y), 3, 3);       // head
   c.fillRect(Math.round(x + 1), Math.round(y + 3), 3, 6);          // body
@@ -228,7 +230,7 @@ function weatherFX(c, wx, t, reduce) {
       const y = (hash(i * 3.1) * H + t * 320) % H;
       px(c, x, y, 1, 3);
     }
-    if (wx === 'storm' && !reduce && Math.sin(t * 3.1) > 0.995) { c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); }
+    if (wx === 'storm' && !reduce && Math.sin(t * 3.1) > 0.995) { c.fillStyle = PAPER; c.fillRect(0, 0, W, H); }
   } else if (wx === 'snow') {
     for (let i = 0; i < 70; i++) {
       const x = (hash(i * 2.3) * W + Math.sin(t + i) * 6 + t * 18) % W;
@@ -245,7 +247,7 @@ function weatherFX(c, wx, t, reduce) {
 }
 function vignetteScanlines(c, on) {
   if (!on) return;
-  c.save(); c.globalAlpha = 0.20; c.fillStyle = '#000';
+  c.save(); c.globalAlpha = 0.20; c.fillStyle = PAPER;
   for (let y = 0; y < H; y += 2) c.fillRect(0, y, W, 1);
   c.restore();
 }
@@ -293,7 +295,7 @@ scenes.travel = function (c, s, t, opt) {
 
 function barn(c, x, y) {
   px(c, x, y - 14, 30, 14);
-  c.fillStyle = '#000'; c.fillRect(x + 2, y - 12, 26, 10); c.fillStyle = '#fff';
+  c.fillStyle = PAPER; c.fillRect(x + 2, y - 12, 26, 10); c.fillStyle = INK;
   line(c, x, y - 14, x + 15, y - 22); line(c, x + 15, y - 22, x + 30, y - 14);
   px(c, x + 12, y - 8, 6, 8);
   px(c, x + 34, y - 20, 6, 20); // silo
@@ -304,7 +306,7 @@ scenes.title = function (c, s, t) {
   // horizon with a dead town and a car leaving it
   const horizon = 108;
   for (let i = 0; i < 40; i++) { const x = hash(i * 3.3) * W, y = hash(i * 7.7) * 60; px(c, x, y, 1, 1); }
-  disc(c, 268, 26, 11); disc(c, 263, 22, 9, '#000'); // crescent
+  disc(c, 268, 26, 11); disc(c, 263, 22, 9, PAPER); // crescent
   skyline(c, 21, horizon - 4, 34, 0.85, 'town');
   ground(c, horizon + 2, t * 40);
   for (let x = -32; x < W; x += 32) px(c, x + 32 - ((t * 40) % 32), horizon + 20, 14, 2);
@@ -332,7 +334,7 @@ scenes.road = sceneRoadWith(function (c, s, t, hz) {
 });
 scenes.sign = sceneRoadWith(function (c, s, t, hz) {
   px(c, 60, hz - 34, 4, 40); px(c, 96, hz - 34, 4, 40);
-  px(c, 46, hz - 46, 68, 26); c.fillStyle = '#000'; c.fillRect(48, hz - 44, 64, 22); c.fillStyle = '#fff';
+  px(c, 46, hz - 46, 68, 26); c.fillStyle = PAPER; c.fillRect(48, hz - 44, 64, 22); c.fillStyle = INK;
   px(c, 54, hz - 38, 42, 2); px(c, 54, hz - 32, 34, 2); px(c, 54, hz - 26, 46, 2);
   if (s.vehicle.has) wagon(c, 190, hz + 6, t * 3, false);
 });
@@ -342,7 +344,7 @@ scenes.wrecks = sceneRoadWith(function (c, s, t, hz) {
 });
 function carHulk(c, x, y, seed) {
   px(c, x, y + 6, 28, 5); px(c, x + 5, y + 2, 16, 4); px(c, x - 1, y + 9, 30, 2);
-  c.fillStyle = '#000'; c.fillRect(x + 7, y + 3, 5, 3); c.fillRect(x + 14, y + 3, 5, 3); c.fillStyle = '#fff';
+  c.fillStyle = PAPER; c.fillRect(x + 7, y + 3, 5, 3); c.fillRect(x + 14, y + 3, 5, 3); c.fillStyle = INK;
   if (hash(seed) > 0.5) { circle(c, x + 5, y + 12, 2); circle(c, x + 22, y + 12, 2); }
 }
 scenes.bridge = function (c, s, t, opt) {
@@ -368,19 +370,19 @@ scenes.station = sceneRoadWith(function (c, s, t, hz) {
   px(c, 40, hz - 36, 4, 36); px(c, 120, hz - 36, 4, 36);
   px(c, 34, hz - 40, 96, 5);
   px(c, 60, hz - 14, 8, 14); px(c, 92, hz - 14, 8, 14);
-  px(c, 150, hz - 30, 60, 30); c.fillStyle = '#000'; c.fillRect(154, hz - 26, 52, 20); c.fillStyle = '#fff';
+  px(c, 150, hz - 30, 60, 30); c.fillStyle = PAPER; c.fillRect(154, hz - 26, 52, 20); c.fillStyle = INK;
   px(c, 158, hz - 22, 20, 12); px(c, 186, hz - 22, 14, 12);
   if (s.vehicle.has) wagon(c, 240, hz + 4, t * 2, false);
 });
 scenes.bus = sceneRoadWith(function (c, s, t, hz) {
   const x = 96, y = hz - 6;
-  px(c, x, y, 128, 26); c.fillStyle = '#000'; c.fillRect(x + 4, y + 4, 118, 10); c.fillStyle = '#fff';
+  px(c, x, y, 128, 26); c.fillStyle = PAPER; c.fillRect(x + 4, y + 4, 118, 10); c.fillStyle = INK;
   for (let i = 0; i < 7; i++) px(c, x + 6 + i * 17, y + 5, 13, 8);
   disc(c, x + 22, y + 27, 5); disc(c, x + 104, y + 27, 5);
 });
 scenes.map = function (c, s, t, opt) {
   // an atlas page
-  px(c, 20, 14, 280, 132); c.fillStyle = '#000'; c.fillRect(22, 16, 276, 128); c.fillStyle = '#fff';
+  px(c, 20, 14, 280, 132); c.fillStyle = PAPER; c.fillRect(22, 16, 276, 128); c.fillStyle = INK;
   for (let i = 0; i < 9; i++) { const y = 30 + i * 13; line(c, 30, y + Math.sin(i) * 4, 290, y - Math.cos(i) * 5); }
   for (let i = 0; i < 5; i++) line(c, 40 + i * 55, 20, 50 + i * 55, 140);
   px(c, 30, 80, 260, 2);
@@ -390,9 +392,9 @@ scenes.map = function (c, s, t, opt) {
 };
 scenes.train = sceneRoadWith(function (c, s, t, hz) {
   px(c, 0, hz - 24, W, 22);
-  c.fillStyle = '#000';
+  c.fillStyle = PAPER;
   for (let i = 0; i < 8; i++) c.fillRect(i * 42 + 3, hz - 21, 36, 16);
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   for (let i = 0; i < 16; i++) { disc(c, i * 21 + 8, hz + 1, 3); }
   px(c, 0, hz + 4, W, 2);
 });
@@ -450,7 +452,7 @@ scenes.vista = function (c, s, t, opt) {
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
 scenes.motel = sceneRoadWith(function (c, s, t, hz) {
-  px(c, 40, hz - 34, 200, 34); c.fillStyle = '#000'; c.fillRect(42, hz - 32, 196, 30); c.fillStyle = '#fff';
+  px(c, 40, hz - 34, 200, 34); c.fillStyle = PAPER; c.fillRect(42, hz - 32, 196, 30); c.fillStyle = INK;
   for (let i = 0; i < 8; i++) px(c, 50 + i * 24, hz - 22, 10, 22);
   px(c, 36, hz - 38, 208, 4);
   px(c, 250, hz - 46, 4, 46); px(c, 240, hz - 56, 26, 14);
@@ -476,7 +478,7 @@ scenes.well = sceneRoadWith(function (c, s, t, hz) {
   px(c, x - 14, hz - 14, 30, 14);
 });
 scenes.church = sceneRoadWith(function (c, s, t, hz) {
-  px(c, 110, hz - 34, 80, 34); c.fillStyle = '#000'; c.fillRect(113, hz - 31, 74, 30); c.fillStyle = '#fff';
+  px(c, 110, hz - 34, 80, 34); c.fillStyle = PAPER; c.fillRect(113, hz - 31, 74, 30); c.fillStyle = INK;
   line(c, 110, hz - 34, 150, hz - 52); line(c, 150, hz - 52, 190, hz - 34);
   px(c, 144, hz - 74, 12, 24); line(c, 144, hz - 74, 150, hz - 84); line(c, 150, hz - 84, 156, hz - 74);
   px(c, 149, hz - 94, 2, 10); px(c, 146, hz - 91, 8, 2);
@@ -501,7 +503,7 @@ scenes.hood = sceneRoadWith(function (c, s, t, hz) {
 });
 scenes.tire = sceneRoadWith(function (c, s, t, hz) {
   wagon(c, 120, hz + 4, 0, false);
-  disc(c, 128, hz + 20, 4); c.fillStyle = '#000'; disc(c, 128, hz + 21, 2); c.fillStyle = '#fff';
+  disc(c, 128, hz + 20, 4); c.fillStyle = PAPER; disc(c, 128, hz + 21, 2); c.fillStyle = INK;
   figure(c, 112, hz + 6, t, false);
 });
 scenes.underneath = sceneRoadWith(function (c, s, t, hz) {
@@ -540,7 +542,7 @@ scenes.sick = function (c, s, t, opt) {
 scenes.sickbad = function (c, s, t, opt) {
   scenes.sick(c, s, t, opt);
   grey(c, 0, 0, W, H, 'g25');
-  c.fillStyle = '#000'; c.fillRect(0, 0, W, H / 6); c.fillRect(0, H - H / 6, W, H / 6);
+  c.fillStyle = PAPER; c.fillRect(0, 0, W, H / 6); c.fillRect(0, H - H / 6, W, H / 6);
 };
 scenes.camp = function (c, s, t, opt) {
   const hz = 104;
@@ -557,8 +559,8 @@ scenes.camp = function (c, s, t, opt) {
 };
 scenes.enclave = sceneRoadWith(function (c, s, t, hz) {
   px(c, 0, hz - 42, W, 4);
-  for (let x = 0; x < W; x += 18) { px(c, x, hz - 42, 14, 42); c.fillStyle = '#000'; c.fillRect(x + 2, hz - 39, 10, 36); c.fillStyle = '#fff'; }
-  px(c, 140, hz - 30, 30, 30); c.fillStyle = '#000'; c.fillRect(143, hz - 27, 24, 27); c.fillStyle = '#fff';
+  for (let x = 0; x < W; x += 18) { px(c, x, hz - 42, 14, 42); c.fillStyle = PAPER; c.fillRect(x + 2, hz - 39, 10, 36); c.fillStyle = INK; }
+  px(c, 140, hz - 30, 30, 30); c.fillStyle = PAPER; c.fillRect(143, hz - 27, 24, 27); c.fillStyle = INK;
   figure(c, 152, hz - 60, t, false);
 });
 scenes.bandits = sceneRoadWith(function (c, s, t, hz) {
@@ -566,7 +568,7 @@ scenes.bandits = sceneRoadWith(function (c, s, t, hz) {
   for (let i = 0; i < 4; i++) figure(c, 120 + i * 16, hz - 4, t * 0.7 + i, false);
 });
 scenes.doctor = sceneRoadWith(function (c, s, t, hz) {
-  px(c, 110, hz - 36, 90, 36); c.fillStyle = '#000'; c.fillRect(113, hz - 33, 84, 33); c.fillStyle = '#fff';
+  px(c, 110, hz - 36, 90, 36); c.fillStyle = PAPER; c.fillRect(113, hz - 33, 84, 33); c.fillStyle = INK;
   px(c, 148, hz - 26, 14, 4); px(c, 153, hz - 31, 4, 14);
   figure(c, 205, hz - 8, t, false);
 });
@@ -580,12 +582,12 @@ scenes.dogs = sceneRoadWith(function (c, s, t, hz) {
   }
 });
 scenes.library = function (c, s, t) {
-  px(c, 20, 20, 280, 120); c.fillStyle = '#000'; c.fillRect(22, 22, 276, 116); c.fillStyle = '#fff';
+  px(c, 20, 20, 280, 120); c.fillStyle = PAPER; c.fillRect(22, 22, 276, 116); c.fillStyle = INK;
   for (let r = 0; r < 5; r++) { px(c, 30, 36 + r * 22, 260, 2); for (let i = 0; i < 60; i++) { const x = 32 + i * 4.3; px(c, x, 36 + r * 22 - 12 + (i % 3), 3, 12 - (i % 3)); } }
   figure(c, 150, 116, t * 0.5, false);
 };
 scenes.theater = function (c, s, t) {
-  px(c, 40, 14, 240, 88); c.fillStyle = '#000'; c.fillRect(43, 17, 234, 82); c.fillStyle = '#fff';
+  px(c, 40, 14, 240, 88); c.fillStyle = PAPER; c.fillRect(43, 17, 234, 82); c.fillStyle = INK;
   grey(c, 45, 19, 230, 78, 'g25');
   for (let i = 0; i < 3; i++) px(c, 70 + i * 60, 40 + Math.sin(t + i) * 4, 24, 30);
   px(c, 36, 100, 248, 4);
@@ -596,7 +598,7 @@ scenes.spring = function (c, s, t, opt) {
   mountains(c, 101, 70, 26);
   ground(c, 96);
   for (let i = 0; i < 40; i++) { const p = (t * 14 + i * 6) % 60; px(c, 120 + Math.sin(i + t) * 26, 110 - p, 2, 2); }
-  disc(c, 160, 124, 26); c.fillStyle = '#000'; disc(c, 160, 124, 23); c.fillStyle = '#fff';
+  disc(c, 160, 124, 26); c.fillStyle = PAPER; disc(c, 160, 124, 23); c.fillStyle = INK;
   grey(c, 137, 112, 46, 24, 'g50');
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
@@ -638,7 +640,7 @@ scenes.horde = scenes.zhorde; scenes.zsurround = scenes.zhorde;
 scenes.znight = scenes.night;
 scenes.zbridge = function (c, s, t, opt) { scenes.bridge(c, s, t, { blocked: true, reduce: opt && opt.reduce }); for (let i = 0; i < 14; i++) figure(c, 60 + i * 14, 74, t + i, true); };
 scenes.zhouse = sceneRoadWith(function (c, s, t, hz) {
-  px(c, 110, hz - 40, 90, 40); c.fillStyle = '#000'; c.fillRect(113, hz - 37, 84, 37); c.fillStyle = '#fff';
+  px(c, 110, hz - 40, 90, 40); c.fillStyle = PAPER; c.fillRect(113, hz - 37, 84, 37); c.fillStyle = INK;
   line(c, 106, hz - 40, 155, hz - 62); line(c, 155, hz - 62, 204, hz - 40);
   px(c, 148, hz - 20, 14, 20); px(c, 120, hz - 30, 12, 10); px(c, 176, hz - 30, 12, 10);
   px(c, 122, hz - 52, 8, 8);
@@ -668,7 +670,7 @@ function poly(c, pts, style) {
   }
 }
 function dotline(c, x1, y1, x2, y2, every, run) {
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   const d = Math.max(1, Math.round(Math.hypot(x2 - x1, y2 - y1)));
   for (let i = 0; i <= d; i++) {
     const t = i / d;
@@ -694,7 +696,7 @@ scenes.map = function (c, s, t, opt) {
   for (const st of ZT.GEO.states) {
     poly(c, st.pts, 'dot');
     const lx = mx(st.label[1]), ly = my(st.label[0]);
-    if (lx > 2 && lx < W - tw(st.name) - 2) bmp(c, st.name, lx, ly, '#fff');
+    if (lx > 2 && lx < W - tw(st.name) - 2) bmp(c, st.name, lx, ly, INK);
   }
   // rivers and water
   for (const rv of ZT.GEO.rivers) poly(c, rv.closed ? rv.pts : rv.pts, 'dash');
@@ -728,7 +730,7 @@ scenes.map = function (c, s, t, opt) {
     const x = mx(n.lon), y = my(n.lat);
     const seen = s && s.seen && s.seen[id];
     const big = n.kind === 'landmark' || n.kind === 'start' || n.kind === 'end';
-    if (seen) { c.fillStyle = '#fff'; c.fillRect(x - (big ? 2 : 1), y - (big ? 2 : 1), big ? 5 : 3, big ? 5 : 3); }
+    if (seen) { c.fillStyle = INK; c.fillRect(x - (big ? 2 : 1), y - (big ? 2 : 1), big ? 5 : 3, big ? 5 : 3); }
     else { rect(c, x - (big ? 2 : 1), y - (big ? 2 : 1), big ? 5 : 3, big ? 5 : 3); }
     if (id === (opt.sel || '')) { rect(c, x - 5, y - 5, 11, 11); rect(c, x - 6, y - 6, 13, 13); }
   }
@@ -748,8 +750,8 @@ scenes.map = function (c, s, t, opt) {
     const x = mx(pos.lon), y = my(pos.lat);
     const blink = opt.reduce ? true : Math.sin(t * 4) > -0.4;
     if (blink) {
-      c.fillStyle = '#000'; c.fillRect(x - 5, y - 6, 11, 13);
-      c.fillStyle = '#fff';
+      c.fillStyle = PAPER; c.fillRect(x - 5, y - 6, 11, 13);
+      c.fillStyle = INK;
       c.fillRect(x - 1, y - 5, 3, 3); c.fillRect(x - 2, y - 3, 5, 1);   // a little wagon-shaped marker
       c.fillRect(x - 4, y - 2, 9, 2); c.fillRect(x - 3, y, 2, 2); c.fillRect(x + 2, y, 2, 2);
       rect(c, x - 5, y - 6, 11, 13);
@@ -764,20 +766,20 @@ scenes.map = function (c, s, t, opt) {
   line(c, cx - 5, cy + 1, cx + 5, cy + 1);
   const per100 = (100 / 69) * MS;
   const sx = 8, sy = H - 24;
-  c.fillStyle = '#000'; c.fillRect(sx - 3, sy - 12, per100 * 2 + 8, 17);
+  c.fillStyle = PAPER; c.fillRect(sx - 3, sy - 12, per100 * 2 + 8, 17);
   bmp(c, '0', sx - 1, sy - 11); bmp(c, '200 MI', sx + per100 * 2 - 12, sy - 11);
   line(c, sx, sy, sx + per100 * 2, sy); line(c, sx, sy - 3, sx, sy + 2);
   line(c, sx + per100, sy - 2, sx + per100, sy + 2); line(c, sx + per100 * 2, sy - 3, sx + per100 * 2, sy + 2);
   // key strip along the bottom
-  c.fillStyle = '#000'; c.fillRect(0, H - 17, W, 17);
+  c.fillStyle = PAPER; c.fillRect(0, H - 17, W, 17);
   px(c, 0, H - 18, W, 1);
   let kx = 4;
   const key = (label, draw) => { draw(kx, H - 10); bmp(c, label, kx + 12, H - 12); kx += 12 + tw(label) + 9; };
   key('DRIVEN', (x, y) => { thick(c, x, y, x + 8, y); });
   key('AHEAD', (x, y) => { dotline(c, x, y, x + 8, y, 3); });
   key('STOP', (x, y) => { rect(c, x + 2, y - 2, 5, 5); });
-  key('PASSED', (x, y) => { c.fillStyle = '#fff'; c.fillRect(x + 2, y - 2, 5, 5); });
-  key('YOU', (x, y) => { c.fillStyle = '#fff'; c.fillRect(x + 3, y - 3, 3, 3); c.fillRect(x + 2, y, 5, 1); c.fillRect(x + 1, y + 1, 7, 1); });
+  key('PASSED', (x, y) => { c.fillStyle = INK; c.fillRect(x + 2, y - 2, 5, 5); });
+  key('YOU', (x, y) => { c.fillStyle = INK; c.fillRect(x + 3, y - 3, 3, 3); c.fillRect(x + 2, y, 5, 1); c.fillRect(x + 1, y + 1, 7, 1); });
 };
 
 /* landmark scenes — the real places */
@@ -808,7 +810,7 @@ scenes.lm_fork = function (c, s, t, opt) {   // the road comes apart
   // the sign: a dark board with a white edge, so the lettering reads
   px(c, 146, hz - 44, 3, 50);
   const board = (x, y, w, h, label) => {
-    rect(c, x, y, w, h); c.fillStyle = '#000'; c.fillRect(x + 1, y + 1, w - 2, h - 2); c.fillStyle = '#fff';
+    rect(c, x, y, w, h); c.fillStyle = PAPER; c.fillRect(x + 1, y + 1, w - 2, h - 2); c.fillStyle = INK;
     bmp(c, label, x + 4, y + Math.round((h - 5) / 2));
   };
   board(96, hz - 58, 54, 13, 'US 26');
@@ -822,9 +824,9 @@ scenes.lm_chimney = function (c, s, t, opt) {
   const bx = 168;
   for (let y = 0; y < 34; y++) { const w = 34 - y * 0.85; px(c, bx - w / 2, hz - y, w, 1); }   // clay cone
   for (let y = 34; y < 78; y++) { const w = Math.max(3, 7 - (y - 34) * 0.05); px(c, bx - w / 2, hz - y, w, 1); }
-  c.fillStyle = '#000';
+  c.fillStyle = PAPER;
   for (let i = 0; i < 40; i++) c.fillRect(bx - 14 + hash(i * 2.1) * 28, hz - 4 - hash(i * 5.5) * 26, 1, 1);
-  c.fillStyle = '#fff';
+  c.fillStyle = INK;
   if (s.vehicle.has) wagon(c, 40, hz - 4, t * 2, false);
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
@@ -840,7 +842,7 @@ scenes.lm_city = function (c, s, t, opt) {
 scenes.lm_refinery = function (c, s, t, opt) {
   const hz = 110;
   for (let i = 0; i < 5; i++) { const x = 40 + i * 44; px(c, x, hz - 52 - i % 2 * 10, 7, 52 + (i % 2) * 10); }
-  px(c, 30, hz - 22, 240, 22); c.fillStyle = '#000'; c.fillRect(33, hz - 19, 234, 19); c.fillStyle = '#fff';
+  px(c, 30, hz - 22, 240, 22); c.fillStyle = PAPER; c.fillRect(33, hz - 19, 234, 19); c.fillStyle = INK;
   for (let i = 0; i < 6; i++) circle(c, 52 + i * 38, hz - 10, 7);
   for (let i = 0; i < 26; i++) { const p2 = (t * 30 + i * 6) % 34; px(c, 218 + Math.sin(i * 2 + t * 5) * (2 + p2 * 0.2), hz - 62 - p2, 2, 2); }   // the flare
   px(c, 214, hz - 62, 7, 12);
@@ -850,7 +852,7 @@ scenes.lm_refinery = function (c, s, t, opt) {
 };
 scenes.lm_town = sceneRoadWith(function (c, s, t, hz) {
   skyline(c, 66, hz - 2, 18, 0.7, 'town');
-  px(c, 250, hz - 34, 26, 34); c.fillStyle = '#000'; c.fillRect(253, hz - 31, 20, 31); c.fillStyle = '#fff';
+  px(c, 250, hz - 34, 26, 34); c.fillStyle = PAPER; c.fillRect(253, hz - 31, 20, 31); c.fillStyle = INK;
   if (s.vehicle.has) wagon(c, 130, hz + 6, t * 3, false);
 });
 scenes.lm_pass = function (c, s, t, opt) {         // South Pass: famously NOT a pass
@@ -885,17 +887,17 @@ scenes.lm_lake = function (c, s, t, opt) {
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
 scenes.lm_fort = sceneRoadWith(function (c, s, t, hz) {
-  px(c, 60, hz - 44, 200, 44); c.fillStyle = '#000'; c.fillRect(64, hz - 40, 192, 40); c.fillStyle = '#fff';
+  px(c, 60, hz - 44, 200, 44); c.fillStyle = PAPER; c.fillRect(64, hz - 40, 192, 40); c.fillStyle = INK;
   for (let x = 60; x < 260; x += 8) px(c, x, hz - 46, 5, 3);            // parapet
   px(c, 60, hz - 52, 18, 52); px(c, 242, hz - 52, 18, 52);              // bastions
-  px(c, 150, hz - 20, 20, 20); c.fillStyle = '#000'; c.fillRect(153, hz - 17, 14, 17); c.fillStyle = '#fff';
+  px(c, 150, hz - 20, 20, 20); c.fillStyle = PAPER; c.fillRect(153, hz - 17, 14, 17); c.fillStyle = INK;
   figure(c, 66, hz - 64, t * 0.6, false); figure(c, 248, hz - 64, t * 0.6 + 2, false);
 });
 scenes.lm_lava = function (c, s, t, opt) {
   const hz = 116;
   mountains(c, 181, hz - 24, 12);
   px(c, 0, hz, W, 1);
-  c.fillStyle = '#000'; c.fillRect(0, hz + 1, W, H - hz - 1);
+  c.fillStyle = PAPER; c.fillRect(0, hz + 1, W, H - hz - 1);
   for (let i = 0; i < 200; i++) {                                        // broken black rock
     const x = hash(i * 1.9) * W, y = hz + 2 + hash(i * 4.3) * 40;
     px(c, x, y, 2 + (i % 3), 1);
@@ -907,7 +909,7 @@ scenes.lm_lava = function (c, s, t, opt) {
 scenes.lm_canyon = function (c, s, t, opt) {
   const hz = 78;
   ground(c, hz, t * 10);
-  c.fillStyle = '#000'; c.fillRect(0, hz + 14, W, H - hz - 14);          // the hole in the ground
+  c.fillStyle = PAPER; c.fillRect(0, hz + 14, W, H - hz - 14);          // the hole in the ground
   px(c, 0, hz + 14, W, 1); px(c, 0, H - 22, W, 1);
   for (let x = 0; x < W; x += 3) { px(c, x, hz + 15, 1, 3 + (x % 5)); px(c, x, H - 25 - (x % 4), 1, 3); }
   grey(c, 0, H - 21, W, 21, 'g50');                                      // the river at the bottom
@@ -921,8 +923,8 @@ scenes.lm_base = function (c, s, t, opt) {
   for (let x = 0; x < W; x += 4) px(c, x, hz - 26, 1, 26);               // chain link
   px(c, 0, hz - 26, W, 1); px(c, 0, hz - 20, W, 1);
   px(c, 224, hz - 66, 10, 66); px(c, 216, hz - 78, 26, 14);              // tower
-  if (Math.sin(t * 2.2) > -0.5) { grey(c, 208, hz - 82, 42, 22, 'g25'); c.fillStyle = '#fff'; c.fillRect(226, hz - 74, 6, 5); }
-  px(c, 40, hz - 16, 120, 16); c.fillStyle = '#000'; c.fillRect(43, hz - 13, 114, 13); c.fillStyle = '#fff';
+  if (Math.sin(t * 2.2) > -0.5) { grey(c, 208, hz - 82, 42, 22, 'g25'); c.fillStyle = INK; c.fillRect(226, hz - 74, 6, 5); }
+  px(c, 40, hz - 16, 120, 16); c.fillStyle = PAPER; c.fillRect(43, hz - 13, 114, 13); c.fillStyle = INK;
   ground(c, hz, t * 22);
   for (let x = -32; x < W; x += 32) px(c, x + 32 - ((t * 22) % 32), hz + 20, 14, 2);
   if (s.vehicle.has) wagon(c, 130, hz + 2, t * 4, false);
@@ -933,8 +935,8 @@ scenes.safezone = function (c, s, t) {
   for (let i = 0; i < 30; i++) px(c, hash(i * 3.3) * W, hash(i * 7.7) * 46, 1, 1);
   mountains(c, 151, hz - 30, 26);                                        // the Boise foothills
   px(c, 0, hz - 44, W, 5);
-  for (let x = 0; x < W; x += 22) { px(c, x, hz - 44, 16, 44); c.fillStyle = '#000'; c.fillRect(x + 2, hz - 41, 12, 38); c.fillStyle = '#fff'; }
-  c.fillStyle = '#000'; c.fillRect(132, hz - 40, 56, 40); c.fillStyle = '#fff';
+  for (let x = 0; x < W; x += 22) { px(c, x, hz - 44, 16, 44); c.fillStyle = PAPER; c.fillRect(x + 2, hz - 41, 12, 38); c.fillStyle = INK; }
+  c.fillStyle = PAPER; c.fillRect(132, hz - 40, 56, 40); c.fillStyle = INK;
   grey(c, 132, hz - 40, 56, 40, 'g50');
   for (let i = 0; i < 6; i++) figure(c, 118 + i * 15, hz - 57, t * 0.6 + i, false);
   ground(c, hz, t * 12);
@@ -961,7 +963,7 @@ return {
     vignetteScanlines(c, scanlines && !(opt && opt.reduce));
     const dst = canvas.getContext('2d');
     dst.imageSmoothingEnabled = false;
-    dst.fillStyle = '#000';
+    dst.fillStyle = PAPER;
     dst.fillRect(0, 0, canvas.width, canvas.height);
     dst.drawImage(buf, 0, 0, canvas.width, canvas.height);
   },
@@ -972,7 +974,7 @@ return {
     clear(c);
     const T = 8, oy = 11;
     c.save(); c.translate(0, oy);
-    // walls: filled blocks, with a white edge only where they meet open ground
+    // walls: filled blocks, with an ink edge only where they meet open ground
     const at = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h ? 1 : g.grid[y * g.w + x]);
     for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
       const v = g.grid[y * g.w + x];
@@ -984,7 +986,7 @@ return {
         if (at(x + 1, y) !== 1) px(c, x * T + T - 1, y * T, 1, T);
       } else if (v === 2) {
         px(c, x * T + 1, y * T + 2, T - 2, T - 4);
-        c.fillStyle = '#000'; c.fillRect(x * T + 2, y * T + 3, T - 4, 2); c.fillStyle = '#fff';
+        c.fillStyle = PAPER; c.fillRect(x * T + 2, y * T + 3, T - 4, 2); c.fillStyle = INK;
       }
     }
     // exit (the car)
@@ -1007,9 +1009,9 @@ return {
       circle(c, g.stick.ox, g.stick.oy, 16);
       circle(c, g.stick.ox, g.stick.oy, 15);
       disc(c, g.stick.ox + g.stick.dx * 14, g.stick.oy + g.stick.dy * 14, 5);
-      c.fillStyle = '#000';
+      c.fillStyle = PAPER;
       disc(c, g.stick.ox + g.stick.dx * 14, g.stick.oy + g.stick.dy * 14, 2);
-      c.fillStyle = '#fff';
+      c.fillStyle = INK;
     }
     c.restore();
     // the HUD lives in the DOM, where it is readable and can be announced
@@ -1017,7 +1019,7 @@ return {
     vignetteScanlines(c, scanlines);
     const dst = canvas.getContext('2d');
     dst.imageSmoothingEnabled = false;
-    dst.fillStyle = '#000'; dst.fillRect(0, 0, canvas.width, canvas.height);
+    dst.fillStyle = PAPER; dst.fillRect(0, 0, canvas.width, canvas.height);
     dst.drawImage(buf, 0, 0, canvas.width, canvas.height);
   },
 };

@@ -155,7 +155,7 @@ ZT.Atlas = {
     const scaleMiles = (opt.zoom || 1) >= 2.5 ? 50 : 200, scaleWidth = scaleMiles / 69 * camera.scale;
     return `<svg xmlns="http://www.w3.org/2000/svg" class="atlas-chart" viewBox="0 0 ${this.width} ${this.height}" aria-label="Road atlas: select a stop to inspect it" role="group">
       <style>
-        /* Neutral paper and ink, matching the scoped palette in style.css. */
+        /* Neutral paper and ink, matching the shared palette in style.css. */
         .atlas-paper{fill:#e8e8e8}.atlas-stipple{fill:#686868;shape-rendering:crispEdges}
         .atlas-boundary{fill:none;stroke:#b0b0b0;stroke-width:1;stroke-dasharray:3 5}
         .atlas-river{fill:none;stroke:#b0b0b0;stroke-width:2}.atlas-state-name{font:16px monospace;fill:#686868;letter-spacing:4px}
