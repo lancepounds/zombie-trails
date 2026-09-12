@@ -155,27 +155,36 @@ ZT.Atlas = {
     const scaleMiles = (opt.zoom || 1) >= 2.5 ? 50 : 200, scaleWidth = scaleMiles / 69 * camera.scale;
     return `<svg xmlns="http://www.w3.org/2000/svg" class="atlas-chart" viewBox="0 0 ${this.width} ${this.height}" aria-label="Road atlas: select a stop to inspect it" role="group">
       <style>
-        .atlas-paper {fill:#080b0c}.atlas-boundary{fill:none;stroke:#454e4a;stroke-width:1;stroke-dasharray:3 5}
-        .atlas-river{fill:none;stroke:#303d38;stroke-width:2}.atlas-state-name{font:16px monospace;fill:#727e77;letter-spacing:4px}
-        .atlas-road{fill:none;stroke:#b0bcb4;stroke-width:2.5;stroke-dasharray:5 7}.atlas-road.off{stroke:#555f59;stroke-dasharray:1 9}
-        .atlas-road.traveled{stroke:#edf1e9;stroke-width:5;stroke-dasharray:none}.atlas-road.current{stroke:#edf1e9;stroke-width:3;stroke-dasharray:12 5}
-        .atlas-route-preview{fill:none;stroke:#edf1e9;stroke-width:6;stroke-linecap:round;stroke-dasharray:1 13}
-        .atlas-stop{cursor:pointer}.atlas-symbol{stroke:#edf1e9;stroke-width:2;fill:#080b0c}.atlas-stop.passed .atlas-symbol{fill:#edf1e9}
-        .atlas-stop.off .atlas-symbol{stroke:#727e77}.atlas-selection{fill:none;stroke:#edf1e9;stroke-width:2}
-        .atlas-leader{stroke:#89968d;stroke-width:1;fill:none}.atlas-hit{fill:transparent;stroke:none}
-        .atlas-label-bg{fill:#080b0c;stroke:none}.atlas-label{font:bold 18px monospace;fill:#edf1e9}
-        .atlas-stop.off .atlas-label{fill:#9da89f}.atlas-stop.selected .atlas-label-bg{fill:#edf1e9}
-        .atlas-stop.selected .atlas-label{fill:#080b0c}.atlas-stop:focus .atlas-label-bg,.atlas-stop:hover .atlas-label-bg{fill:#edf1e9}
-        .atlas-stop:focus .atlas-label,.atlas-stop:hover .atlas-label{fill:#080b0c}
-        .atlas-stop:focus{outline:none}.atlas-stop:focus .atlas-hit{stroke:#edf1e9;stroke-width:2;stroke-dasharray:4 3}
-        .atlas-you{fill:#edf1e9;stroke:#080b0c;stroke-width:3;pointer-events:none}.atlas-caption{font:16px monospace;fill:#edf1e9}
+        /* Neutral paper and ink, matching the scoped palette in style.css. */
+        .atlas-paper{fill:#e8e8e8}.atlas-stipple{fill:#686868;shape-rendering:crispEdges}
+        .atlas-boundary{fill:none;stroke:#b0b0b0;stroke-width:1;stroke-dasharray:3 5}
+        .atlas-river{fill:none;stroke:#b0b0b0;stroke-width:2}.atlas-state-name{font:16px monospace;fill:#686868;letter-spacing:4px}
+        .atlas-road{fill:none;stroke:#505050;stroke-width:2.5;stroke-dasharray:5 7}.atlas-road.off{stroke:#686868;stroke-dasharray:1 9}
+        .atlas-road.traveled{stroke:#181818;stroke-width:5;stroke-dasharray:none}.atlas-road.current{stroke:#181818;stroke-width:3;stroke-dasharray:12 5}
+        .atlas-route-preview{fill:none;stroke:#181818;stroke-width:6;stroke-linecap:round;stroke-dasharray:1 13}
+        .atlas-stop{cursor:pointer}.atlas-symbol{stroke:#181818;stroke-width:2;fill:#e8e8e8}.atlas-stop.passed .atlas-symbol{fill:#181818}
+        .atlas-stop.off .atlas-symbol{stroke:#686868}.atlas-selection{fill:none;stroke:#181818;stroke-width:2}
+        .atlas-leader{stroke:#686868;stroke-width:1;fill:none}.atlas-hit{fill:transparent;stroke:none}
+        .atlas-label-bg{fill:#e8e8e8;stroke:none}.atlas-label{font:bold 18px monospace;fill:#181818}
+        .atlas-stop.off .atlas-label{fill:#505050}.atlas-stop.selected .atlas-label-bg{fill:#181818}
+        .atlas-stop.selected .atlas-label{fill:#e8e8e8}.atlas-stop:focus .atlas-label-bg,.atlas-stop:hover .atlas-label-bg{fill:#181818}
+        .atlas-stop:focus .atlas-label,.atlas-stop:hover .atlas-label{fill:#e8e8e8}
+        .atlas-stop:focus{outline:none}.atlas-stop:focus .atlas-hit{stroke:#181818;stroke-width:2;stroke-dasharray:4 3}
+        .atlas-you{fill:#181818;stroke:#e8e8e8;stroke-width:3;pointer-events:none}.atlas-caption{font:16px monospace;fill:#181818}
       </style>
-      <defs><clipPath id="atlas-clip"><rect x="1" y="1" width="${this.width - 2}" height="${this.height - 2}"/></clipPath></defs>
+      <defs>
+        <clipPath id="atlas-clip"><rect x="1" y="1" width="${this.width - 2}" height="${this.height - 2}"/></clipPath>
+        <pattern id="atlas-stipple" width="4" height="4" patternUnits="userSpaceOnUse"><path class="atlas-stipple" d="M0,0h1v1H0Z M2,2h1v1H2Z"/></pattern>
+      </defs>
       <rect class="atlas-paper" width="${this.width}" height="${this.height}"/>
+      <g aria-hidden="true" pointer-events="none">
+        <rect width="${this.width}" height="${this.height}" fill="url(#atlas-stipple)"/>
+        <rect class="atlas-paper" x="6" y="6" width="${this.width - 12}" height="${this.height - 12}"/>
+      </g>
       <g clip-path="url(#atlas-clip)">${states}${rivers}${names}${lines}${shapes}
       ${inside(you) ? `<g aria-hidden="true"><path class="atlas-you" d="M${you.x},${you.y - 16} l12,23 -12,-5 -12,5 Z"/></g>` : ''}</g>
       <g aria-hidden="true"><text class="atlas-caption" x="18" y="22">N ↑ · WEST ←</text>
-        <path d="M20,${this.height - 22} v6 h${scaleWidth} v-6" stroke="#b0bcb4" fill="none" stroke-width="2"/>
+        <path d="M20,${this.height - 22} v6 h${scaleWidth} v-6" stroke="#505050" fill="none" stroke-width="2"/>
         <text class="atlas-caption" x="${26 + scaleWidth}" y="${this.height - 11}">~${scaleMiles} MI</text></g>
     </svg>`;
   },

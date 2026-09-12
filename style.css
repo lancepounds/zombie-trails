@@ -1,6 +1,6 @@
-/* ZOMBIE TRAILS — a monochrome monitor.
-   Deliberately single-world: no light theme, no color. Emphasis is inverse video,
-   the way it was on a machine that only had two of anything. */
+/* ZOMBIE TRAILS — a monochrome monitor and a black-ink road atlas.
+   Emphasis is inverse video, the way it was on a machine that only had
+   two of anything. The map opens like a sheet of paper inside the monitor. */
 
 :root {
   --ink: #06080a;          /* the tube when it is off */
@@ -319,7 +319,21 @@ button.p:active, button.p:focus-visible { background: var(--phos); color: var(--
 .scav-msg { min-height: 1.5em; margin: -6px 0 10px; color: var(--phos); font-size: calc(13px * var(--tscale)); }
 
 /* ---------- the map screen ---------- */
-.atlas { min-width: 0; }
+.atlas {
+  /* Local paper / ink palette; SVG colors in 82_atlas.js match these tones. */
+  --ink: #e8e8e8;
+  --ink-2: #d8d8d8;
+  --phos: #181818;
+  --phos-dim: #505050;
+  --phos-dimmer: #686868;
+  --phos-faint: #b0b0b0;
+  min-width: 0;
+  padding: clamp(10px, 2vw, 20px);
+  border: 4px double var(--phos);
+  background: var(--ink);
+  color: var(--phos);
+  color-scheme: light;
+}
 .atlas-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .atlas-heading h1 { font-size: calc(21px * var(--tscale)); margin-bottom: 4px; }
 .atlas-heading p { color: var(--phos-dim); margin: 0; }
@@ -335,7 +349,7 @@ button.p:active, button.p:focus-visible { background: var(--phos); color: var(--
 .atlas-summary dd { margin: 4px 0 0; font-weight: bold; font-size: calc(19px * var(--tscale)); }
 .atlas-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .atlas-toolbar span { min-width: 3em; text-align: center; }
-.atlas-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--phos-dim); background: var(--ink); overscroll-behavior-x: contain; }
+.atlas-scroll { max-width: 100%; overflow-x: auto; border: 2px solid var(--phos); background: var(--ink); overscroll-behavior-x: contain; }
 .atlas-chart { display: block; width: 100%; min-width: calc(920px * var(--tscale)); height: auto; }
 .atlas-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; margin: 12px 0 8px; padding: 0; list-style: none; font-size: calc(14px * var(--tscale)); }
 .atlas-legend li { display: flex; align-items: center; gap: 8px; }
@@ -353,7 +367,7 @@ button.p:active, button.p:focus-visible { background: var(--phos); color: var(--
 .atlas-itinerary { border-left: 3px dotted var(--phos-dim); padding-left: 10px; }
 .atlas-road-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 12px; }
 .atlas-road-card { border: 1px solid var(--phos-faint); padding: 12px; min-width: 0; }
-.atlas-road-card.chosen { border-color: var(--phos); }
+.atlas-road-card.chosen { border-color: var(--phos); box-shadow: inset 0 0 0 2px var(--phos); }
 .atlas-road-card h3 { font-size: calc(16px * var(--tscale)); color: var(--phos); }
 .atlas-road-card p { font-size: calc(14px * var(--tscale)); }
 .atlas-estimates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-block: 1px solid var(--phos-faint); padding-block: 10px; }

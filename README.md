@@ -19,6 +19,9 @@ that journey without turning it into a different kind of game.
 
 ## What's new in v1.4: the road atlas
 
+- **v1.4.1 retro palette:** paper-white backgrounds, black ink, stippled map
+  borders, and inverse selections give the atlas a classic monochrome computer
+  look. Route patterns and readable labels distinguish each road and stop.
 - A larger, sharp monochrome map with directly selectable stops, state boundaries,
   and a steady marker for your position between towns.
 - Four zoom levels, **Your position** and **Whole route** controls, and a scrollable
@@ -242,8 +245,8 @@ report exposed an outdated landmark constant in the simulator; after fixing it,
 100% on Story, 52.5% on Normal, 35% on Hard, and 6.7% on Nightmare. These are
 sample results, not guarantees or a substitute for player feedback.
 
-The v1.4 atlas was checked with native SVG renders of the overview, a zoomed view,
-and a journey in progress. Browser testing has not been performed for this update.
+The v1.4 atlas and v1.4.1 palette were checked with native SVG renders of the
+overview, a zoomed view, and a journey in progress. Browser testing has not been performed for these updates.
 Automated campaigns and native SVG renders do not verify the full page layout,
 touch interaction, or how the story feels.
 
