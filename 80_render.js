@@ -283,16 +283,6 @@ scenes.travel = function (c, s, t, opt) {
   poles(c, off * 0.6, horizon + 2);
   // road
   road(c, horizon + 6);
-  // roadside junk
-  for (let i = 0; i < 6; i++) {
-    const x = (((i * 120 - off * 1.2) % 720) + 720) % 720 - 60;
-    if (x > -40 && x < W + 40) {
-      const k = hash(i * 9.1);
-      if (k < 0.3) { px(c, x, horizon + 12, 10, 4); px(c, x + 2, horizon + 9, 6, 3); }
-      else if (k < 0.5) px(c, x, horizon + 14, 6, 2);
-      else if (k < 0.62) figure(c, x, horizon + 6, off * 0.3 + i, true);
-    }
-  }
   // the wagon (or walkers on foot)
   const bob = Math.sin(off * 0.9) * (s.pace === 'hard' ? 1.2 : 0.6);
   if (s.vehicle.has) wagon(c, 132, horizon + 6 + bob, off, !!s.vehicle.broken);
