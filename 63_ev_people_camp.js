@@ -34,7 +34,7 @@ ZT.Events.add([
         return 'The trade is done on the tailgate. They throw in a road atlas with better notes in it than yours.'; } },
     { text: 'Give them the help and take nothing', hint: 'morale', show: (s) => s.inv.parts > 0,
       do(s, c) { X.take(s, c, 'parts', 1); X.morale(s, c, 12); s.flags.goodwill = (s.flags.goodwill || 0) + 1;
-        return 'You fit the pump, refuse the food, and drive away with five people in a better mood than the part was worth.'; } },
+        return 'You fit the pump, refuse the food, and drive away in a better mood than the part was worth.'; } },
     { text: 'Wish them luck', hint: '',
       do(s, c) { return 'You have nothing to spare and you say so. They understand. Everyone out here understands.'; } },
   ],
@@ -65,7 +65,7 @@ ZT.Events.add([
   ],
 },
 {
-  id: 'p_join_request', cat: 'people', weight: 5, cond: (s) => ZT.State.aliveCount(s) < 5 && ZT.State.aliveCount(s) >= 1, art: 'figure',
+  id: 'p_join_request', cat: 'people', weight: 5, cond: (s) => ZT.State.aliveCount(s) < ZT.MAX_PARTY && ZT.State.aliveCount(s) >= 1, art: 'figure',
   setup(s, c) { c.name = ZT.pick(s, ZT.NAME_POOL.filter((n) => !s.party.some((m) => m.name === n))) || 'Wes'; c.role = ZT.pick(s, ['mechanic', 'medic', 'scout', 'generalist', 'driver']); },
   text: (s, c) => `Somebody is walking west on the shoulder with a pack and a length of pipe. They give a name — ${c.name} — say they were a ${c.role === 'generalist' ? 'schoolteacher' : c.role} before, and ask how far you are going.`,
   choices: [
@@ -190,7 +190,7 @@ ZT.Events.add([
   id: 'p_kid_alone', cat: 'people', weight: 3, cond: (s) => s.miles > 400, art: 'figure', once: true,
   text: 'A girl of about twelve is sitting on a porch swing with a backpack on, as though she has been waiting for a ride for a long time. There is nobody else.',
   choices: [
-    { text: 'Take her', hint: 'another person to feed',
+    { text: 'Take her', hint: 'another person to feed', show: (s) => ZT.State.aliveCount(s) < ZT.MAX_PARTY,
       do(s, c) { const nm = ZT.State.newMember(ZT.pick(s, ['Nell', 'Sunny', 'Birdie', 'Rae']), 'generalist');
         nm.health = 70; nm.morale = 40; nm.fatigue = 40;
         const dead = s.party.find((m) => !m.alive || m.missing);

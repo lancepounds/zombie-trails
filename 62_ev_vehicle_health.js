@@ -358,7 +358,7 @@ ZT.Events.add([
         return 'A fire big enough to be seen and warm enough to matter. Somebody sits up all night watching the dark past the light.'; } },
     { text: 'Everyone shares body heat and blankets', hint: 'free; partial',
       do(s, c) { X.heal(s, c, c.m, 8); X.fatigueAll(s, c, 8); X.morale(s, c, 3);
-        return 'Five people, every blanket, and the seats folded flat. Undignified, effective enough, and it costs nothing.'; } },
+        return 'Every blanket, with the seats folded flat and everyone tucked in. Undignified, effective enough, and it costs nothing.'; } },
   ],
 },
 {
@@ -389,7 +389,7 @@ ZT.Events.add([
         return `${c.m.name} sleeps forty feet out from now on. Everybody else sleeps. It is a practical arrangement that nobody feels good about.`; } },
     { text: 'Everyone talks about it in the morning', hint: 'uncomfortable; may help',
       do(s, c) { X.delay(s, c, 0.2);
-        if (ZT.roll(s, 0.65)) { X.morale(s, c, 10); return 'A very awkward twenty minutes over coffee in which it turns out that four out of five people are having the same dream, which is somehow enormously reassuring.'; }
+        if (ZT.roll(s, 0.65)) { X.morale(s, c, 10); return 'A very awkward twenty minutes over coffee. Saying the dream aloud makes it sound less powerful, which is somehow enormously reassuring.'; }
         X.morale(s, c, -5); return 'It goes badly. Some things do not want talking about at seven in the morning next to a cold fire.'; } },
   ],
 },

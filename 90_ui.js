@@ -6,7 +6,7 @@ let screen = 'title';
 let ctxData = {};             // per-screen scratch
 let raf = null, last = 0, tAnim = 0;
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: false, daily: true }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: false, daily: true, theme: 'light' }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -78,6 +78,7 @@ function bindMenu(root, items, onPick) {
 }
 
 function render(html, alt) {
+  if (screen !== 'travelling') travelling = null;
   const root = $('screen');
   root.innerHTML = html;
   const cv = $('scene');
@@ -114,7 +115,7 @@ function loop(ts) {
     if (scav.over) { const o = scav.over; scav = null; finishScavenge(o); }
     return;
   }
-  if (travelling) {
+  if (travelling && screen === 'travelling') {
     travelling.t += dt;
     travelling.dist += dt * (travelling.speed || 34);
     if (cv) ZT.R.draw(cv, 'travel', S, tAnim, { dist: travelling.dist, reduce: !settings.flash });
@@ -150,6 +151,8 @@ function onKey(e) {
   }
   if (e.type !== 'keydown') return;
   if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && k !== 'escape') return;
+  // A held number or Enter must not dismiss a newly opened scene.
+  if (e.repeat && !['arrowup', 'arrowdown'].includes(k)) { e.preventDefault(); return; }
   const h = keyMap[k];
   if (h) { e.preventDefault(); h(); }
 }
@@ -159,7 +162,7 @@ function goTitle() {
   screen = 'title'; ctxData = { art: 'title' }; S = null; travelling = null;
   const hasSave = ZT.Save.has();
   const items = [
-    { label: 'New journey', hint: 'five names, one wagon' },
+    { label: 'New journey', hint: 'one to five names, one wagon' },
     { label: 'Continue', hint: hasSave ? saveBlurb() : 'no saved game', disabled: !hasSave },
     { label: 'How to survive', hint: 'instructions' },
     { label: 'The road behind', hint: 'memorials and scores' },
@@ -170,7 +173,7 @@ function goTitle() {
       <pre class="logo" aria-label="Zombie Trails">${LOGO}</pre>
       <p class="tag">&gt; WEST OR ELSE &lt;</p>
       ${sceneHTML('A station wagon leaving a dead town at night, with figures on the road')}
-      <p class="blurb">1980s trail survival. Omaha to Boise, a station wagon,<br>five survivors, and the dead on every road.</p>
+      <p class="blurb">1980s trail survival. Omaha to Boise, a station wagon,<br>up to five survivors, and the dead on every road.</p>
       ${menuHTML(items)}
       <p class="foot">${TOUCH ? 'Tap a command. Everything in the game is a tap.' : 'Number keys or click. Arrow keys move, Enter selects.'}</p>
     </div>`);
@@ -211,7 +214,7 @@ function goInstructions() {
       <div class="cols">
         <section>
           <h2>The road</h2>
-          <p>You are leading five people from Omaha, Nebraska to Boise, Idaho: about thirteen hundred miles of real road, up the Platte, over the Continental Divide, and down the Snake. Word is that Boise held. Nobody has confirmed it.</p>
+          <p>You are leading one to five people from Omaha, Nebraska to Boise, Idaho: about thirteen hundred miles of real road, up the Platte, over the Continental Divide, and down the Snake. Word is that Boise held. Nobody has confirmed it.</p>
           <p>Most of the game is a menu. You choose to travel, and time passes, and things happen to you. When something happens you pick from a short list of bad options.</p>
         </section>
         <section>
@@ -261,6 +264,7 @@ function goSettings() {
     { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE'][settings.scale]}`, hint: '' },
     { label: 'Erase saved game and records', hint: 'cannot be undone' },
     { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
+    { label: `Display: ${settings.theme === 'dark' ? 'DARK' : 'LIGHT'}`, hint: 'monochrome in both modes' },
     { label: 'Back', key: 'Esc' },
   ];
   const root = render(`<div class="doc"><h1>SETTINGS</h1>${menuHTML(items)}</div>`);
@@ -271,6 +275,7 @@ function goSettings() {
     else if (i === 3) { settings.scale = (settings.scale + 1) % 3; applyScale(); }
     else if (i === 4) { if (confirm('Erase the saved game, memorials and scores?')) { ZT.Save.clear(1); ZT.Save.saveSettings(Object.assign({}, settings, { memorials: null })); try { localStorage.removeItem('zombietrails.v1.memorials'); localStorage.removeItem('zombietrails.v1.scores'); } catch (e) {} } }
     else if (i === 5) settings.daily = !settings.daily;
+    else if (i === 6) { toggleTheme(); return; }
     else { saveSettings(); if (S) goTravel(); else goTitle(); return; }
     saveSettings(); goSettings();
   });
@@ -279,6 +284,27 @@ function goSettings() {
 function saveSettings() { ZT.Save.saveSettings(settings); }
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
 function applyFlash() { const tube = document.getElementById('tube'); if (tube) tube.classList.toggle('reduced', !settings.flash); }
+function applyTheme() {
+  ZT.Display.setTheme(settings.theme);
+  settings.theme = ZT.Display.mode;
+  const p = ZT.Display.palette(), root = document.documentElement;
+  for (const [token, value] of Object.entries({ ink: p.paper, 'ink-2': p.well, phos: p.ink, 'phos-dim': p.muted, 'phos-dimmer': p.dim, 'phos-faint': p.rule })) root.style.setProperty('--' + token, value);
+  root.dataset.theme = settings.theme;
+  root.style.colorScheme = settings.theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = p.paper;
+  const button = $('theme-toggle');
+  if (button) {
+    button.textContent = settings.theme === 'dark' ? 'Light mode' : 'Dark mode';
+    button.setAttribute('aria-label', 'Switch to ' + (settings.theme === 'dark' ? 'light' : 'dark') + ' mode');
+  }
+}
+function toggleTheme() {
+  settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(); saveSettings();
+  if (screen === 'map') drawMapScreen();
+  else if (screen === 'settings') goSettings();
+}
 
 function goRoadBehind() {
   screen = 'records'; ctxData = { art: 'graves' };
@@ -306,25 +332,30 @@ function goRoadBehind() {
 
 /* ---------------- party setup ---------------- */
 function goSetup() {
-  screen = 'setup'; ctxData = { art: 'figures' };
+  if (screen !== 'setup') ctxData = { art: 'figures' };
+  screen = 'setup';
   const names = ctxData.names || ZT.DEFAULT_NAMES.slice();
   const roles = ctxData.roles || ['driver', 'medic', 'mechanic', 'scout', 'generalist'];
+  const traits = ctxData.traits || ZT.DEFAULT_TRAITS.slice();
+  const count = ctxData.count || ZT.MAX_PARTY;
+  const ids = Array.from({ length: count }, (_, i) => i);
   let diff = ctxData.diff || 'normal';
+  const capture = () => {
+    ids.forEach(i => { names[i] = $('nm' + i).value; roles[i] = $('rl' + i).value; traits[i] = $('tr' + i).value; });
+    Object.assign(ctxData, { names, roles, traits, count, diff });
+  };
   const root = render(`
     <div class="doc setup">
       <h1>WHO IS GOING</h1>
-      <p class="lede">Five people are leaving Omaha in a station wagon. Name them. You will remember these names later, which is the point.</p>
-      <table class="party-setup">
-        <thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Role</th><th scope="col">What it does</th></tr></thead>
-        <tbody>
-        ${[0, 1, 2, 3, 4].map((i) => `<tr>
-          <td>${i + 1}</td>
-          <td><input id="nm${i}" maxlength="12" value="${esc(names[i])}" aria-label="Name of traveller ${i + 1}"></td>
-          <td><select id="rl${i}" aria-label="Role of traveller ${i + 1}">${ZT.ROLES.map((r) => `<option value="${r}"${roles[i] === r ? ' selected' : ''}>${ZT.cap(r)}</option>`).join('')}</select></td>
-          <td class="dim" id="rt${i}">${esc(ZT.ROLE_TIPS[roles[i]])}</td>
-        </tr>`).join('')}
-        </tbody>
-      </table>
+      <p class="lede">Choose one to five travelers, including whoever drives. A smaller party needs less food; more people bring more skills. Name them. You will remember these names later.</p>
+      <label class="party-count" for="party-count">People in the wagon
+        <select id="party-count">${Array.from({ length: ZT.MAX_PARTY }, (_, i) => i + 1).map(n => `<option value="${n}"${n === count ? ' selected' : ''}>${n} ${ZT.plural(n, 'traveler')}</option>`).join('')}</select>
+      </label>
+      <div class="traveler-list">${ids.map(i => `<fieldset class="traveler-card"><legend>Traveler ${i + 1}</legend><div class="traveler-fields">
+        <label for="nm${i}">Name<input id="nm${i}" maxlength="12" value="${esc(names[i])}"></label>
+        <label for="rl${i}">Role<select id="rl${i}" aria-describedby="rt${i}">${ZT.ROLES.map(r => `<option value="${r}"${roles[i] === r ? ' selected' : ''}>${ZT.cap(r)}</option>`).join('')}</select><small id="rt${i}">${esc(ZT.ROLE_TIPS[roles[i]])}</small></label>
+        <label for="tr${i}">Travel trait<select id="tr${i}" aria-describedby="tt${i}">${Object.entries(ZT.TRAITS).map(([k, t]) => `<option value="${k}"${traits[i] === k ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select><small id="tt${i}">${esc(ZT.TRAITS[traits[i]].tip)}</small></label>
+      </div></fieldset>`).join('')}</div>
       <h2>Difficulty</h2>
       <div class="diffs" role="radiogroup" aria-label="Difficulty">
         ${Object.entries(ZT.DIFF).map(([k, d]) => `<button class="diff${k === diff ? ' on' : ''}" data-d="${k}" role="radio" aria-checked="${k === diff}">
@@ -333,25 +364,28 @@ function goSetup() {
       ${menuHTML([{ label: 'Depart for the supply depot', hint: 'next' }, { label: 'Roll random names', hint: '' }, { label: 'Back', key: 'Esc' }])}
     </div>`);
   root.querySelectorAll('.diff').forEach((b) => b.addEventListener('click', () => {
-    diff = b.dataset.d; ctxData.diff = diff;
-    ctxData.names = [0, 1, 2, 3, 4].map((i) => $('nm' + i).value);
-    ctxData.roles = [0, 1, 2, 3, 4].map((i) => $('rl' + i).value);
+    diff = b.dataset.d; capture();
     ZT.Audio.select(); goSetup();
+    root.querySelector(`.diff[data-d="${diff}"]`).focus();
   }));
-  [0, 1, 2, 3, 4].forEach((i) => {
+  $('party-count').addEventListener('change', () => {
+    const chosen = Number($('party-count').value);
+    capture(); ctxData.count = chosen; goSetup(); $('party-count').focus();
+  });
+  ids.forEach((i) => {
     $('rl' + i).addEventListener('change', () => { $('rt' + i).textContent = ZT.ROLE_TIPS[$('rl' + i).value]; });
+    $('tr' + i).addEventListener('change', () => { $('tt' + i).textContent = ZT.TRAITS[$('tr' + i).value].tip; });
   });
   const items = [{ label: 'Depart' }, { label: 'Random' }, { label: 'Back' }];
   bindMenu(root, items, (i) => {
-    const nm = [0, 1, 2, 3, 4].map((k) => $('nm' + k).value.trim() || ZT.DEFAULT_NAMES[k]);
-    const rl = [0, 1, 2, 3, 4].map((k) => $('rl' + k).value);
+    capture();
     if (i === 0) {
-      S = ZT.State.newGame({ names: nm, roles: rl, difficulty: diff });
+      S = ZT.State.newGame({ names, roles, traits, partySize: count, difficulty: diff });
       goShop();
     } else if (i === 1) {
       const pool = ZT.NAME_POOL.slice();
-      ctxData.names = [0, 1, 2, 3, 4].map(() => pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-      ctxData.roles = rl; ctxData.diff = diff; goSetup();
+      ctxData.names = Array.from({ length: ZT.MAX_PARTY }, () => pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+      goSetup();
     } else { ctxData = {}; goTitle(); }
   });
   keyMap['escape'] = () => { ctxData = {}; goTitle(); };
@@ -427,7 +461,7 @@ function drawShop() {
 function quartermasterAdvice() {
   return `A woman with a clipboard looks at your cart and says what she says to everyone.
 <br><br>
-"Two pounds of food per person per day. Five people. Do the arithmetic for eighty days and then add some, because you will be slower than you think.
+"${S.party.length} ${ZT.plural(S.party.length, 'person', 'people')}. About ${ZT.n(ZT.Party.foodNeed(S))} pounds of food a day at these rations, allowing for your travelers' appetites. Do the arithmetic for eighty days and then add some, because you will be slower than you think.
 <br><br>
 That wagon does eighteen to the gallon if you are gentle with it. Omaha to Boise is thirteen hundred miles at the very best. You cannot carry that much fuel, so you are going to be siphoning, and you will want somewhere to put it.
 <br><br>
@@ -446,7 +480,7 @@ function goTravel() {
   if (v.has && v.broken) warnings.push(`The ${v.broken} is broken. The wagon is not going anywhere until it is fixed.`);
   if (v.has && S.inv.fuel <= 0) warnings.push('The tank is empty.');
   if (S.inv.food <= 0) warnings.push('There is no food left.');
-  else if (S.inv.food < ZT.State.aliveCount(S) * ZT.RATIONS[S.rations].lbs * 4) warnings.push('Food is nearly gone.');
+  else if (S.inv.food < ZT.Party.foodNeed(S) * 4) warnings.push('Food is nearly gone.');
   if (!v.has) warnings.push('You are on foot.');
   const infected = S.party.filter((m) => m.alive && (m.inf === 'bitten' || m.inf === 'symptomatic'));
   if (infected.length) warnings.push(`${ZT.list(infected.map((m) => m.name))} ${infected.length === 1 ? 'is' : 'are'} infected.`);
@@ -473,6 +507,7 @@ function goTravel() {
       <div class="left">
         <section class="road-note" aria-label="Before you travel">${ZT.Story.forecast(S).map(t => `<p>${esc(t)}</p>`).join('')}</section>
         <p class="road-note">${esc(ZT.Story.line(S))}</p>
+        ${partyEffects()}
         ${warnings.length ? `<ul class="warnings" role="alert">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
         ${menuHTML(items, { compact: true })}
       </div>
@@ -503,10 +538,10 @@ function sceneAlt() {
   return `The wagon on ${where}. Day ${S.day}, mile ${Math.round(S.miles)}, weather ${ZT.WEATHER[S.weather].name.toLowerCase()}.`;
 }
 function paceBlurb() {
-  if (!S.vehicle.has) return 'on foot, about 12 miles a day';
+  if (!S.vehicle.has) return `on foot, about ${Math.round(ZT.Travel.expectedMiles(S))} miles a day`;
   if (S.vehicle.broken) return 'not until the wagon is fixed';
   if (S.inv.fuel <= 0) return 'no fuel';
-  const mpd = Math.round(ZT.PACE[S.pace].mpd * ZT.WEATHER[S.weather].speed * ZT.region(S).road * ZT.Vehicle.speedFactor(S));
+  const mpd = Math.round(ZT.Travel.expectedMiles(S));
   return `~${mpd} mi/day \u00b7 ${Math.round(ZT.Vehicle.range(S))} mi of fuel`;
 }
 function condClass(c) {
@@ -517,7 +552,7 @@ function partyTable() {
     const c = ZT.State.condition(m);
     if (!m.alive) return `<tr class="dead"><th scope="row">${esc(m.name)}</th><td colspan="3">died day ${m.diedDay} &mdash; ${esc(m.cause)}</td></tr>`;
     return `<tr>
-      <th scope="row">${esc(m.name)}<span class="role">${esc(m.role)} · ${esc(ZT.Story.trait(m)[0])}</span></th>
+      <th scope="row">${esc(m.name)}<span class="role">${esc(m.role)} · ${esc(ZT.Party.trait(m).name)}</span></th>
       <td class="cond ${condClass(c)}">${esc(ZT.cap(c))}</td>
       <td class="meter" aria-label="health ${Math.round(m.health)} of 100"><span style="width:${Math.round(m.health)}%"></span><b>${Math.round(m.health)}</b></td>
       <td class="dim small">${m.fatigue > 65 ? 'exhausted' : m.fatigue > 40 ? 'tired' : 'rested'}${m.morale < 30 ? ', low' : ''}${m.isolated ? ', isolated' : ''}</td>
@@ -533,6 +568,9 @@ function suppliesMini() {
     <div><b>${esc(ZT.Vehicle.status(S))}</b><span>wagon</span></div>
   </div></div>`;
 }
+function partyEffects() {
+  return `<details class="party-effects"><summary>How the party affects travel</summary><ul class="plain">${ZT.State.alive(S).map(m => `<li><b>${esc(m.name)}:</b> ${esc(ZT.Party.contribution(S, m))}</li>`).join('')}</ul><p class="small dim">Group traits require health of at least 40, fatigue below 85, no fever, and no isolation. Shared bonuses cap at three contributing people per trait.</p></details>`;
+}
 
 /* ---------------- travel action ---------------- */
 function startTravel() {
@@ -540,7 +578,7 @@ function startTravel() {
   else if (S.vehicle.broken) { showModal('THE WAGON IS BROKEN', ZT.Vehicle.describeBreakdown(S, S.vehicle.broken) + ' Nothing moves until it is dealt with.', [{ label: 'Work on it' }, { label: 'Back' }], (k) => (k === 0 ? goRepair() : goTravel()), 'hood'); return; }
   else if (S.inv.fuel <= 0) { showModal('NO FUEL', 'The tank is dry. You are not driving anywhere on nothing. There may be fuel in this area if somebody goes looking for it.', [{ label: 'Scavenge for fuel' }, { label: 'Back' }], (k) => (k === 0 ? goScavengeMenu() : goTravel()), 'fuel'); return; }
   screen = 'travelling';
-  travelling = { t: 0, dur: 0.55, dist: 0, speed: S.vehicle.has ? ZT.PACE[S.pace].mpd * 1.2 : 14 };
+  travelling = { t: 0, dur: 3, dist: 0, speed: S.vehicle.has ? ZT.PACE[S.pace].mpd * 1.2 : 14 };
   ctxData.art = 'travel';
   const root = render(`${statusLine()}${sceneHTML(sceneAlt())}
     <div class="travelling">
@@ -550,6 +588,7 @@ function startTravel() {
   bindMenu(root, [{ label: 'Stop' }], () => { travelling = null; goTravel(); });
   keyMap['escape'] = () => { travelling = null; goTravel(); };
   ZT.Audio.engine();
+  stepTravel();
 }
 function travelFlavor() {
   const leg = ZT.currentLeg(S);
@@ -558,14 +597,14 @@ function travelFlavor() {
   return `${road}. ${ZT.cap(wx)}. ${ZT.PACE[S.pace].name} pace, ${ZT.RATIONS[S.rations].name.toLowerCase()} rations.`;
 }
 function stepTravel() {
-  const before = { day: S.day, miles: S.miles };
+  const before = { day: S.day, miles: S.miles, food: S.inv.food, fuel: S.inv.fuel };
   const r = ZT.Travel.step(S);
   const tick = $('ticker');
   if (tick) tick.textContent = travelFlavor() + ` Day ${S.day}, mile ${Math.round(S.miles)}.`;
   if (!r) {
-    if (settings.daily) { travelling = null; goTravel(); return; }
+    if (settings.daily) { showTravelDay(before); return; }
     travelling.t = 0;
-    travelling.dur = 0.5;
+    travelling.dur = 3;
     // stop travelling on a status change worth surfacing
     const lowFood = S.inv.food <= 0, lowFuel = S.vehicle.has && S.inv.fuel < 2;
     if (lowFood || lowFuel) { travelling = null; goTravel(); }
@@ -584,6 +623,19 @@ function stepTravel() {
   if (r.kind === 'stuck') { goTravel(); return; }
   if (r.kind === 'event') { goEvent(r.event); return; }
   goTravel();
+}
+
+function showTravelDay(before) {
+  screen = 'day-summary'; ctxData.art = 'travel'; travelling = null;
+  const items = [{ label: 'Continue another day', hint: 'leave when you are ready' }, { label: 'Stop and check the party', key: 'Esc' }];
+  const root = render(`${statusLine()}${sceneHTML(sceneAlt())}<div class="event">
+    <h2 class="mtitle">DAY ${S.day} ON THE ROAD</h2>
+    <p>${ZT.n(S.miles - before.miles)} miles traveled. ${ZT.n(Math.max(0, before.food - S.inv.food))} lb of food used${S.vehicle.has ? `; ${ZT.n(Math.max(0, before.fuel - S.inv.fuel))} gallons of fuel used` : ''}.</p>
+    <p class="road-note">${esc(ZT.Story.line(S))}</p>${partyEffects()}
+    <p class="scene-hint">Take your time. The journey waits for your next choice.</p>${menuHTML(items)}</div>`);
+  bindMenu(root, items, i => i === 0 ? startTravel() : goTravel());
+  keyMap.escape = () => goTravel();
+  ZT.Save.save(S);
 }
 
 /* ---------------- event modal ---------------- */
@@ -605,6 +657,7 @@ function goEvent(inst) {
 }
 function showOutcome(inst, out) {
   screen = 'outcome';
+  ctxData.art = inst.art || ctxData.art || 'road';
   const deltas = out.deltas.filter(Boolean);
   const items = [{ label: out.next ? 'And then' : 'Continue' }];
   const root = render(`
@@ -816,7 +869,7 @@ function goStatus(back) {
 }
 function memberNotes(m) {
   const n = ZT.Party.needs(m);
-  const parts = [ZT.Story.trait(m)[1]];
+  const parts = [ZT.Story.trait(m)[1], ZT.Party.contribution(S, m)];
   if (m.inf === 'bitten') parts.push('bitten' + (m.infStable ? ', stabilised' : '') + ' — ' + ZT.Party.woundHint(S, m).toLowerCase().replace(/\.$/, ''));
   else if (m.inf === 'symptomatic') parts.push('feverish' + (m.infStable ? ', stabilised' : ''));
   else if (m.inf === 'exposed') parts.push('scratched');
@@ -899,7 +952,7 @@ function drawMapScreen(focus) {
       <div class="atlas-scroll" id="atlas-scroll" tabindex="0" role="region" aria-label="Interactive map; scroll horizontally on narrow screens">
         ${ZT.Atlas.svg(S, { selected: sel, zoom: ctxData.mapZoom, center: ctxData.mapCenter, route: ctxData.mapRoute })}
       </div>
-      <ul class="atlas-legend" aria-label="Map legend"><li><span class="atlas-key-you">▲</span> Your position</li>
+      <ul class="atlas-legend" aria-label="Map legend"><li><span class="atlas-key-you">${S.vehicle.has ? '▣' : '●'}</span> ${S.vehicle.has ? 'Wagon' : 'On foot'}: your position</li>
         <li><span class="atlas-key-line traveled"></span> Traveled</li><li><span class="atlas-key-line"></span> Road ahead</li>
         <li><span class="atlas-key-line preview"></span> Preview</li><li><span class="atlas-key-line off"></span> Other branch</li><li>◇ Road choice</li></ul>
       <p class="atlas-help">Select a named stop on the map or in the list. Zoom centers on the selected stop; “Your position” centers on you. On a narrow screen, scroll the map sideways. Lines join game stops; road mileages are shown below.</p>
@@ -979,7 +1032,7 @@ function goPace() {
   screen = 'pace'; ctxData.art = 'road';
   const items = Object.entries(ZT.PACE).map(([k, p]) => ({
     label: p.name + (S.pace === k ? '  (current)' : ''),
-    hint: k === 'cautious' ? 'about 22 miles a day; quieter, safer, slower' : k === 'steady' ? 'about 32 miles a day; the baseline' : 'about 45 miles a day; fuel, fatigue, breakdowns, injuries',
+    hint: `about ${Math.round(ZT.Travel.expectedMiles(Object.assign({}, S, { pace: k })))} miles a day; ${k === 'cautious' ? 'quieter, safer, slower' : k === 'steady' ? 'a steady pace' : 'more fuel, fatigue, and wear'}`,
     k,
   }));
   items.push({ label: 'Back', key: 'Esc' });
@@ -995,7 +1048,7 @@ function goRations() {
   const n = ZT.State.aliveCount(S);
   const items = Object.entries(ZT.RATIONS).map(([k, r]) => ({
     label: r.name + (S.rations === k ? '  (current)' : ''),
-    hint: `${ZT.n(r.lbs * n)} lbs a day for ${n} ${ZT.plural(n, 'person', 'people')} — ${k === 'full' ? 'best healing and morale' : k === 'normal' ? 'holds steady' : 'saves food, costs health'}`,
+    hint: `${ZT.n(ZT.Party.foodNeed(S, k))} lbs a day for ${n} ${ZT.plural(n, 'person', 'people')} — ${k === 'full' ? 'best healing and morale' : k === 'normal' ? 'holds steady' : 'saves food, costs health'}`,
     k,
   }));
   items.push({ label: 'Back', key: 'Esc' });
@@ -1008,7 +1061,7 @@ function goRations() {
 }
 function goRest() {
   screen = 'rest'; ctxData.art = 'camp';
-  const items = [1, 2, 3, 5].map((d) => ({ label: `Rest ${d} ${ZT.plural(d, 'day')}`, hint: `${ZT.n(d * ZT.State.aliveCount(S) * ZT.RATIONS[S.rations].lbs)} lbs of food`, d }));
+  const items = [1, 2, 3, 5].map((d) => ({ label: `Rest ${d} ${ZT.plural(d, 'day')}`, hint: `${ZT.n(d * ZT.Party.foodNeed(S))} lbs of food`, d }));
   items.push({ label: 'Back', key: 'Esc' });
   const root = render(`${statusLine()}${sceneHTML('A camp')}
     <div class="event"><h2 class="mtitle">REST</h2>
@@ -1289,7 +1342,7 @@ function goJournalEnd() {
 }
 function endBlurb(won, survivors) {
   if (won) {
-    if (survivors.length === 5) return 'Five people left Omaha and five people walked into the Boise valley. That does not happen often.';
+    if (survivors.length === S.party.length) return `${S.party.length} ${ZT.plural(S.party.length, 'person left', 'people left')} Omaha and everyone reached the Boise valley. That does not happen often.`;
     if (survivors.length === 1) return `${survivors[0].name} came the last of it alone, and the gate opened anyway.`;
     return `${ZT.list(survivors.map((m) => m.name))} reached Boise. The rest are somewhere between here and the Missouri River, marked.`;
   }
@@ -1298,6 +1351,9 @@ function endBlurb(won, survivors) {
 
 /* ---------------- boot ---------------- */
 function start() {
+  applyTheme();
+  const themeButton = $('theme-toggle');
+  if (themeButton) themeButton.addEventListener('click', toggleTheme);
   applyScale();
   applyFlash();
   ZT.Audio.setOn(settings.sound);

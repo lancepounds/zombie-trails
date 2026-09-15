@@ -2,7 +2,7 @@
 
 A 1980s-style trail-survival game. Omaha, Nebraska to Boise, Idaho — about 1,320
 miles of real road, up the Platte, over the Continental Divide, and down the Snake.
-Five survivors, one station wagon, and three real forks in the road.
+Up to five survivors, one station wagon, and three real forks in the road.
 
 **[Play Zombie Trails](https://lancepounds.github.io/zombie-trails/)**
 
@@ -13,11 +13,32 @@ monospace fallbacks.
 ## The heart of the game
 
 Keep it old school: black-and-white scenes, numbered menus, scarce supplies,
-difficult choices, and dry humor. Guide five survivors west, manage the wagon,
+difficult choices, and dry humor. Guide your survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen
 that journey without turning it into a different kind of game.
 
-## What's new in v1.4.2: the retro look throughout
+## What's new in v1.5
+
+- Choose **one to five travelers**, including the driver. Names, roles, traits,
+  and difficulty stay selected when setup is changed or redrawn.
+- Each traveler has a selectable mechanical trait: **Roadwise** improves mileage,
+  **Careful** saves fuel, **Quiet** reduces noise, **Hardy** reduces fatigue,
+  **Light eater** needs less food, and **Steady** supports personal morale.
+  The setup explains the numbers, and **How the party affects travel** shows
+  each person's contribution. Group bonuses pause when someone is too unwell,
+  exhausted, or isolated; each group bonus counts at most three helpers.
+- Switch between **light and dark mode** using the header button or Settings.
+  The preference is saved and applies to menus, pixel art, and the atlas.
+- Ordinary travel ends on a day summary that waits for **Continue another day**.
+  Event choices, outcomes, and arrivals also wait for input. Holding a shortcut
+  cannot repeatedly skip scenes. Optional continuous travel pauses for encounters.
+- Clear road shoulders replace scattered marks, and the atlas uses a wagon or
+  walking-person icon for your position.
+
+Older saved journeys keep their party and progress; travelers without a trait
+receive Steady. Food and route estimates account for party size and traits.
+
+## Added in v1.4.2: the retro look throughout
 
 The atlas's paper-white and black-ink palette now carries through the title,
 menus, party setup, shop, travel, encounters, journal, and ending. Pixel-art
@@ -78,12 +99,13 @@ conditions and can change as the journey unfolds.
 - **A personal ending:** individual survivor remembrances and a record of the
   choices that followed the party.
 
-Existing saved preferences are preserved. Personalities currently follow each
-survivor's role; they are not a separate relationship or skill-progression system.
+Existing saved preferences are preserved. Role-based personalities provide the
+dialogue, while v1.5's separately selected travel traits affect the journey.
 
 ## Playing and controls
 
-1. Open the game, name your party, choose roles and difficulty, and buy supplies.
+1. Open the game, choose your party size, names, roles, traits, and difficulty,
+   then buy supplies.
 2. Choose a road and travel. Check the food and fuel estimates before committing.
 3. Use the road menu to rest, scavenge, treat wounds, repair, or read the journal.
 
@@ -97,7 +119,7 @@ survivor's role; they are not a separate relationship or skill-progression syste
 | S on the road menu | Open Settings |
 | 0 on the road menu | Save and quit options |
 
-Settings include sound, reduced flashing and scanlines, text size, menu-only or
+Settings include light/dark mode, sound, reduced flashing and scanlines, text size, menu-only or
 minigame scavenging, and day-by-day or continuous travel. No timed input is needed
 for menu-only scavenging.
 
@@ -127,12 +149,13 @@ concatenates it.
 
 | File | Purpose |
 |---|---|
-| `00_core.js` through `90_ui.js` | 19 source modules, loaded in filename order |
+| `00_core.js` through `90_ui.js` | 20 source modules, loaded in filename order |
 | `style.css` | Styling |
 | `icons.json` | Embedded icon data used by the build |
 | `build.js` | Generates the playable HTML, manifest, and app icons |
 | `test-story.js` | Story, save/load, and built-script checks |
 | `test-map.js` | Distances, branch states, route previews, estimates, and label layout |
+| `test-party.js` | Party size, traits, bonus caps, food use, estimates, old saves, and themes |
 | `sim.js` | Headless campaign simulator |
 | `index.html` | Generated playable game; do not edit by hand |
 
@@ -151,6 +174,7 @@ That rewrites `index.html`. Commit both the source change and the rebuilt file.
 | File | Responsibility |
 |---|---|
 | `00_core.js` | Constants: regions, items, pace, rations, weather, difficulty, seeded RNG |
+| `02_display.js` | Shared light and dark palettes |
 | `05_route.js` | The route graph, real geography, map projection |
 | `10_state.js` | Game state, save/load, save migration |
 | `20_party.js` | Daily tick, health, fatigue, morale, infection, death |
@@ -231,7 +255,7 @@ node build.js
 npm run test:quick
 ```
 
-The quick command runs `test-map.js`, `test-story.js`, and 480 simulated campaigns: 10 runs for
+The quick command runs `test-party.js`, `test-map.js`, `test-story.js`, and 480 simulated campaigns: 10 runs for
 each combination of four difficulties, three choice policies, and four opening
 loadouts. For 1,920 simulated campaigns and the same story checks:
 

@@ -35,7 +35,7 @@ ZT.Travel = {
   pressureTick(s, mode) {
     const diff = ZT.DIFF[s.difficulty];
     // noise decays
-    s.zombie.noise = ZT.clamp(s.zombie.noise - (mode === 'travel' ? 8 : 12), 0, 100);
+    s.zombie.noise = ZT.clamp(s.zombie.noise - (mode === 'travel' ? 8 + ZT.Party.travelBonuses(s).noise : 12), 0, 100);
     // horde pressure creeps up with distance and days
     const target = 5 + ZT.progress(s) * 55 * diff.horde;
     const drift = s.zombie.horde < target ? 0.7 : -0.4;
@@ -58,12 +58,12 @@ ZT.Travel = {
   },
 
   /* ---------- daily mileage ---------- */
-  milesToday(s) {
+  expectedMiles(s) {
     if (!s.vehicle.has) {
       let m = 12 * ZT.WEATHER[s.weather].speed;
       m *= 0.85 + (ZT.Party.avgHealth(s) / 100) * 0.3;
       m *= ZT.clamp(1 - ZT.Party.avgFatigue(s) / 250, 0.6, 1);
-      return Math.max(3, m * (0.85 + ZT.rand(s) * 0.3));
+      return Math.max(3, m * ZT.Party.travelBonuses(s).mileage);
     }
     const pace = ZT.PACE[s.pace];
     const reg = ZT.region(s);
@@ -74,8 +74,12 @@ ZT.Travel = {
     if (fat > 60) m *= 1 - (fat - 60) / 200;
     const sick = ZT.State.alive(s).filter((x) => x.health < 40 || x.inf === 'symptomatic').length;
     m *= 1 - Math.min(0.3, sick * 0.08);
-    m *= 0.88 + ZT.rand(s) * 0.24;
+    m *= ZT.Party.travelBonuses(s).mileage;
     return Math.max(4, m);
+  },
+  milesToday(s) {
+    const variation = s.vehicle.has ? 0.88 + ZT.rand(s) * 0.24 : 0.85 + ZT.rand(s) * 0.3;
+    return Math.max(s.vehicle.has ? 4 : 3, ZT.Travel.expectedMiles(s) * variation);
   },
 
   /* ---------- a single idle day (delays, repairs, camping) ---------- */

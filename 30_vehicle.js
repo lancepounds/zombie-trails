@@ -27,7 +27,7 @@ ZT.Vehicle = {
     if (s.vehicle.engine < 25) mpg *= 0.85;
     mpg *= 1 - Math.min(0.2, (w / 1500) * 0.15);
     if (s.weather === 'snow' || s.weather === 'storm') mpg *= 0.85;
-    return mpg;
+    return mpg / ZT.Party.travelBonuses(s).fuel;
   },
   /* miles you could still drive on the fuel you have */
   range(s) { return s.vehicle.has ? s.inv.fuel * ZT.Vehicle.mpg(s) : 0; },
