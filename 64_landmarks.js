@@ -128,7 +128,7 @@ ZT.Events.add([
   choices: [
     { text: 'Add your names', hint: 'time; morale',
       do(s, c) { X.delay(s, c, 0.25); X.morale(s, c, 10); s.flags.carvedNames = true;
-        return 'Five names and a date, cut with a screwdriver into rock soft enough to take it, forty feet up a slope of clay, under two hundred other names. It takes an hour and it is not a rational use of an hour and nobody argues about it.'; } },
+        return 'Your names and a date, cut with a screwdriver into rock soft enough to take it, forty feet up a slope of clay, under two hundred other names. It takes an hour and it is not a rational use of an hour and nobody argues about it.'; } },
     { text: 'Read the names for anyone you know', hint: 'information; a gamble',
       do(s, c) { X.delay(s, c, 0.3);
         if (ZT.roll(s, 0.35)) { X.morale(s, c, 12); s.flags.foundName = true;

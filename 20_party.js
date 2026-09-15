@@ -1,6 +1,23 @@
 /* ZOMBIE TRAILS — party: health, fatigue, morale, infection, death */
 'use strict';
 ZT.Party = {
+  trait(m) { return ZT.TRAITS[m.trait] || ZT.TRAITS.steady; },
+  canHelp(m) { return m.alive && !m.missing && !m.isolated && m.health >= 40 && m.fatigue < 85 && m.inf !== 'symptomatic'; },
+  travelBonuses(s) {
+    const helpers = ZT.State.alive(s).filter(m => ZT.Party.canHelp(m));
+    const count = trait => Math.min(3, helpers.filter(m => m.trait === trait).length);
+    return { mileage: 1 + count('roadwise') * 0.04, fuel: 1 - count('careful') * 0.04, noise: count('quiet') * 2 };
+  },
+  foodNeed(s, ration) {
+    const mouths = ZT.State.alive(s).reduce((n, m) => n + (m.trait === 'light_eater' ? 0.8 : 1), 0);
+    return ZT.round1(mouths * ZT.RATIONS[ration || s.rations].lbs * (s.vehicle.has ? 1 : 1.15));
+  },
+  contribution(s, m) {
+    const trait = ZT.Party.trait(m);
+    if (!m.alive || m.missing) return 'No longer traveling with the party.';
+    const paused = trait.group && !ZT.Party.canHelp(m);
+    return `${ZT.ROLE_TIPS[m.role] || ''} ${trait.name}: ${paused ? 'Group benefit paused until rested, well enough, and out of isolation.' : trait.tip}`;
+  },
   /* Daily processing for every living member. mode: 'travel' | 'rest' | 'idle' */
   dailyTick(s, mode) {
     const diff = ZT.DIFF[s.difficulty];
@@ -10,7 +27,7 @@ ZT.Party = {
     const wx = ZT.WEATHER[s.weather];
     const pace = ZT.PACE[s.pace];
     // food
-    const need = alive.length * rat.lbs * (s.vehicle.has ? 1 : 1.15);
+    const need = ZT.Party.foodNeed(s);
     let starving = false;
     if (s.inv.food >= need) s.inv.food = ZT.round1(s.inv.food - need);
     else { s.inv.food = 0; starving = true; }
@@ -25,6 +42,7 @@ ZT.Party = {
       else if (mode === 'idle') { heal += 1; fat -= 10; }
       else { heal -= 1; fat += pace.fatigue + wx.fatigue; if (!s.vehicle.has) { heal -= 1; fat += 6; } }
       heal += wx.health;
+      if (mode === 'travel' && m.trait === 'hardy') fat -= 3;
       if (m.morale > 70) heal += 1;
       if (m.morale < 25) heal -= 1;
       if (m.morale < 12) heal -= 2;
@@ -44,7 +62,7 @@ ZT.Party = {
       heal += ZT.Party.infectionTick(s, m, diff);
       m.health = ZT.clamp(m.health + heal, 0, 100);
       m.fatigue = ZT.clamp(m.fatigue + fat, 0, 100);
-      m.morale = ZT.clamp(m.morale + rat.morale + (starving ? -3 : 0) + (m.isolated ? -1 : 0), 0, 100);
+      m.morale = ZT.clamp(m.morale + rat.morale + (starving ? -3 : 0) + (m.isolated ? -1 : 0) + (mode === 'travel' && !starving && m.trait === 'steady' ? 1 : 0), 0, 100);
       if (m.health <= 0) {
         let cause = 'exhaustion';
         if (m.inf === 'symptomatic') cause = 'infection';

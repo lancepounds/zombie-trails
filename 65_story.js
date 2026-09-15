@@ -39,7 +39,7 @@ ZT.Story = {
     return id && !s.once[id] ? id : null;
   },
   forecast(s) {
-    const need = ZT.State.aliveCount(s) * ZT.RATIONS[s.rations].lbs * (s.vehicle.has ? 1 : 1.15);
+    const need = ZT.Party.foodNeed(s);
     const days = need ? Math.floor(s.inv.food / need) : 0;
     const lines = [`Food: about ${days} full days at these rations (${ZT.n(need)} lb/day).`];
     if (s.vehicle.has) lines.push(`Fuel: about ${Math.floor(ZT.Vehicle.range(s))} miles at this load and pace.`);

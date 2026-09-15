@@ -10,12 +10,12 @@ const order = fs.readdirSync(SRC).filter((f) => /^\d+_.*\.js$/.test(f)).sort();
 const js = order.map((f) => `/* ===== ${f} ===== */\n` + fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
 const css = fs.readFileSync(path.join(SRC, 'style.css'), 'utf8');
 const icons = JSON.parse(fs.readFileSync(path.join(SRC, 'icons.json'), 'utf8'));
-const VERSION = 'v1.4.2';
+const VERSION = 'v1.5';
 
 const manifest = {
   name: 'Zombie Trails',
   short_name: 'Zombie Trails',
-  description: 'Omaha to Boise. Five survivors, a station wagon, and the dead on every road.',
+  description: 'Omaha to Boise. Up to five survivors, a station wagon, and the dead on every road.',
   start_url: './', scope: './', display: 'standalone', orientation: 'any',
   background_color: '#e8e8e8', theme_color: '#e8e8e8',
   icons: [
@@ -51,6 +51,7 @@ ${css}
   <div class="brand">
     <span>Zombie Trails</span>
     <span>Omaha &rarr; Boise &middot; ${VERSION}</span>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode">Dark mode</button>
   </div>
   <main id="screen" tabindex="-1"></main>
 </div>

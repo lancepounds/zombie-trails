@@ -1,9 +1,9 @@
 /* ZOMBIE TRAILS — game state */
 'use strict';
 ZT.State = {
-  newMember(name, role) {
+  newMember(name, role, trait) {
     return {
-      name, role,
+      name, role, trait: Object.hasOwn(ZT.TRAITS, trait) ? trait : 'steady',
       health: 100, fatigue: 0, morale: 75,
       injury: 0, illness: 0,
       inf: 'none', infSev: 0, infDays: 0, infStable: false,
@@ -38,7 +38,9 @@ ZT.State = {
     };
     const names = opts.names || ZT.DEFAULT_NAMES;
     const roles = opts.roles || ['driver', 'medic', 'mechanic', 'scout', 'generalist'];
-    for (let i = 0; i < 5; i++) s.party.push(ZT.State.newMember((names[i] || ZT.DEFAULT_NAMES[i]).trim().slice(0, 12) || ZT.DEFAULT_NAMES[i], roles[i] || 'generalist'));
+    const count = Number.isFinite(opts.partySize) ? ZT.clamp(Math.floor(opts.partySize), 1, ZT.MAX_PARTY) : ZT.MAX_PARTY;
+    const traits = opts.traits || ZT.DEFAULT_TRAITS;
+    for (let i = 0; i < count; i++) s.party.push(ZT.State.newMember(String(names[i] || ZT.DEFAULT_NAMES[i]).trim().slice(0, 12) || ZT.DEFAULT_NAMES[i], ZT.ROLES.includes(roles[i]) ? roles[i] : 'generalist', traits[i]));
     ZT.State.log(s, 'The Omaha gate closes behind you. Boise is 1,300 miles west, give or take.', true);
     return s;
   },
@@ -85,6 +87,7 @@ ZT.State = {
     s.pendingDeaths = s.pendingDeaths || [];
     s.markerSeen = s.markerSeen || {};
     s.scavAt = s.scavAt || {};
+    for (const m of s.party) if (!Object.hasOwn(ZT.TRAITS, m.trait)) m.trait = 'steady';
     if (!s.at) {                     // v1 saves used a linear mile counter
       s.at = ZT.START_NODE; s.legTo = null; s.legMiles = 0;
       s.path = [ZT.START_NODE]; s.seen = { omaha: true }; s.miles = 0;

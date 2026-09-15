@@ -61,6 +61,24 @@ body {
   padding-bottom: 8px; margin-bottom: var(--gap);
   text-transform: uppercase;
 }
+.theme-toggle { font: inherit; color: var(--phos); background: var(--ink); border: 1px solid var(--phos-dim); padding: 8px 12px; min-height: 44px; cursor: pointer; }
+.theme-toggle:hover { background: var(--phos); color: var(--ink); }
+.theme-toggle:focus-visible { outline: 3px double var(--phos); outline-offset: 3px; }
+.party-count { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.party-count select { min-height: 44px; }
+.traveler-list { display: grid; gap: 14px; }
+.traveler-card { border: 1px solid var(--phos-dim); margin: 0; padding: 12px; min-width: 0; }
+.traveler-card legend { padding: 0 8px; font-weight: bold; }
+.traveler-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 16px; }
+.traveler-fields label { display: block; font-weight: bold; }
+.traveler-fields input, .traveler-fields select { display: block; margin: 5px 0; min-height: 44px; max-width: none; }
+.traveler-fields small { display: block; font-size: calc(13px * var(--tscale)); font-weight: normal; color: var(--phos-dim); }
+.party-effects { border: 1px solid var(--phos-faint); padding: 10px; margin: 12px 0; }
+.party-effects summary { cursor: pointer; min-height: 32px; font-weight: bold; }
+.party-effects summary:focus-visible { outline: 2px solid var(--phos); outline-offset: 2px; }
+.party-effects ul { margin-top: 12px; }
+.party-effects li { margin-bottom: 10px; }
+.scene-hint { color: var(--phos-dim); border-top: 1px dotted var(--phos-dim); padding-top: 12px; }
 
 /* ---------- typography ---------- */
 h1, h2, h3 {

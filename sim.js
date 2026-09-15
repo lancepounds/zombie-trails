@@ -68,7 +68,7 @@ function play(seed, difficulty, style, loadout) {
     // housekeeping
     const alive = ZT.State.aliveCount(s);
     if (!alive) { ZT.Travel.endGame(s, 'party'); break; }
-    const daysFood = s.inv.food / Math.max(0.1, alive * ZT.RATIONS[s.rations].lbs);
+    const daysFood = s.inv.food / Math.max(0.1, ZT.Party.foodNeed(s));
     s.rations = daysFood < 8 ? 'meager' : daysFood > 45 ? 'full' : 'normal';
     const avgH = ZT.Party.avgHealth(s), avgF = ZT.Party.avgFatigue(s);
     s.pace = (avgF > 70 || avgH < 45) ? 'cautious' : (s.inv.fuel > 25 && avgF < 40 ? 'steady' : 'steady');

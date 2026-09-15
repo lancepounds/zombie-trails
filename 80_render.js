@@ -5,12 +5,14 @@
 ZT.R = (function () {
 const W = 320, H = 160;
 // Match the shared interface and atlas palette.
-const INK = '#181818', PAPER = '#e8e8e8';
+let INK = '#181818', PAPER = '#e8e8e8', paletteMode = null;
 let buf = null, bctx = null;
 const patterns = {};
 
 function ensure() {
-  if (buf) return;
+  if (buf && paletteMode === ZT.Display.mode) return;
+  paletteMode = ZT.Display.mode;
+  ({ ink: INK, paper: PAPER } = ZT.Display.palette());
   buf = document.createElement('canvas');
   buf.width = W; buf.height = H;
   bctx = buf.getContext('2d');
@@ -111,6 +113,14 @@ function ground(c, y, off) {
     const gy = y + 5 + hash(i * 3.9) * (H - y - 6);
     if (gx > -2 && gx < W) px(c, gx, gy, 1, 1);
   }
+}
+
+function road(c, y) {
+  // Two clear shoulders frame the driving surface; no floating specks or dashes.
+  grey(c, 0, y - 2, W, 2, 'g25');
+  px(c, 0, y, W, 1);
+  px(c, 0, y + 36, W, 1);
+  grey(c, 0, y + 37, W, 2, 'g25');
 }
 
 function skyline(c, seed, baseY, height, density, kind) {
@@ -272,10 +282,7 @@ scenes.travel = function (c, s, t, opt) {
   // mid layer: poles
   poles(c, off * 0.6, horizon + 2);
   // road
-  ground(c, horizon + 6, off);
-  // centre line dashes
-  const dash = ((off * 2) % 32);
-  for (let x = -32; x < W; x += 32) px(c, x + 32 - dash, horizon + 26, 14, 2);
+  road(c, horizon + 6);
   // roadside junk
   for (let i = 0; i < 6; i++) {
     const x = (((i * 120 - off * 1.2) % 720) + 720) % 720 - 60;

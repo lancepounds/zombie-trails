@@ -56,25 +56,14 @@ ZT.Atlas = {
     return approach.legs.concat(branch, onward ? onward.legs : []);
   },
   legEstimate(s, leg) {
-    const reg = ZT.REGIONS[leg.region], wx = ZT.WEATHER[s.weather];
+    const reg = ZT.REGIONS[leg.region];
     const remaining = s.at === leg.from && s.legTo === leg.to ? Math.max(0, leg.miles - s.legMiles) : leg.miles;
     // A shallow view changes only the location used by the existing MPG function.
     const view = Object.assign({}, s, { at: leg.from, legTo: leg.to });
-    let daily;
-    if (s.vehicle.has) {
-      daily = ZT.PACE[s.pace].mpd * wx.speed * reg.road * ZT.Vehicle.speedFactor(s);
-      if (ZT.State.hasRole(s, 'driver')) daily *= 1.08;
-      const fatigue = ZT.Party.avgFatigue(s);
-      if (fatigue > 60) daily *= 1 - (fatigue - 60) / 200;
-      daily *= 1 - Math.min(0.3, ZT.State.alive(s).filter(m => m.health < 40 || m.inf === 'symptomatic').length * 0.08);
-      daily = Math.max(4, daily);
-    } else {
-      daily = Math.max(3, 12 * wx.speed * (0.85 + ZT.Party.avgHealth(s) / 100 * 0.3) *
-        ZT.clamp(1 - ZT.Party.avgFatigue(s) / 250, 0.6, 1));
-    }
+    const daily = ZT.Travel.expectedMiles(view);
     const days = Math.ceil(remaining / daily);
     return { remaining, days, fuel: s.vehicle.has ? remaining / ZT.Vehicle.mpg(view) : null,
-      food: days * ZT.State.aliveCount(s) * ZT.RATIONS[s.rations].lbs * (s.vehicle.has ? 1 : 1.15),
+      food: days * ZT.Party.foodNeed(s),
       dead: reg.density < 0.25 ? 'Sparse' : reg.density < 0.5 ? 'Scattered' : 'Crowded',
       surface: reg.road >= 0.85 ? 'Faster going' : reg.road >= 0.75 ? 'Slower going' : 'Rough going' };
   },
@@ -121,6 +110,7 @@ ZT.Atlas = {
   },
   svg(s, opt) {
     const esc = this.escape, { camera, nodes, you, inside } = this.layout(s, opt);
+    const palette = ZT.Display.palette();
     const project = camera.project;
     const path = pts => pts.map((p, i) => { const q = project({ lat: p[0], lon: p[1] }); return `${i ? 'L' : 'M'}${q.x.toFixed(1)},${q.y.toFixed(1)}`; }).join(' ');
     const segment = (a, b) => `M${a.x.toFixed(1)},${a.y.toFixed(1)} L${b.x.toFixed(1)},${b.y.toFixed(1)}`;
@@ -156,21 +146,21 @@ ZT.Atlas = {
     return `<svg xmlns="http://www.w3.org/2000/svg" class="atlas-chart" viewBox="0 0 ${this.width} ${this.height}" aria-label="Road atlas: select a stop to inspect it" role="group">
       <style>
         /* Neutral paper and ink, matching the shared palette in style.css. */
-        .atlas-paper{fill:#e8e8e8}.atlas-stipple{fill:#686868;shape-rendering:crispEdges}
-        .atlas-boundary{fill:none;stroke:#b0b0b0;stroke-width:1;stroke-dasharray:3 5}
-        .atlas-river{fill:none;stroke:#b0b0b0;stroke-width:2}.atlas-state-name{font:16px monospace;fill:#686868;letter-spacing:4px}
-        .atlas-road{fill:none;stroke:#505050;stroke-width:2.5;stroke-dasharray:5 7}.atlas-road.off{stroke:#686868;stroke-dasharray:1 9}
-        .atlas-road.traveled{stroke:#181818;stroke-width:5;stroke-dasharray:none}.atlas-road.current{stroke:#181818;stroke-width:3;stroke-dasharray:12 5}
-        .atlas-route-preview{fill:none;stroke:#181818;stroke-width:6;stroke-linecap:round;stroke-dasharray:1 13}
-        .atlas-stop{cursor:pointer}.atlas-symbol{stroke:#181818;stroke-width:2;fill:#e8e8e8}.atlas-stop.passed .atlas-symbol{fill:#181818}
-        .atlas-stop.off .atlas-symbol{stroke:#686868}.atlas-selection{fill:none;stroke:#181818;stroke-width:2}
-        .atlas-leader{stroke:#686868;stroke-width:1;fill:none}.atlas-hit{fill:transparent;stroke:none}
-        .atlas-label-bg{fill:#e8e8e8;stroke:none}.atlas-label{font:bold 18px monospace;fill:#181818}
-        .atlas-stop.off .atlas-label{fill:#505050}.atlas-stop.selected .atlas-label-bg{fill:#181818}
-        .atlas-stop.selected .atlas-label{fill:#e8e8e8}.atlas-stop:focus .atlas-label-bg,.atlas-stop:hover .atlas-label-bg{fill:#181818}
-        .atlas-stop:focus .atlas-label,.atlas-stop:hover .atlas-label{fill:#e8e8e8}
-        .atlas-stop:focus{outline:none}.atlas-stop:focus .atlas-hit{stroke:#181818;stroke-width:2;stroke-dasharray:4 3}
-        .atlas-you{fill:#181818;stroke:#e8e8e8;stroke-width:3;pointer-events:none}.atlas-caption{font:16px monospace;fill:#181818}
+        .atlas-paper{fill:${palette.paper}}.atlas-stipple{fill:${palette.dim};shape-rendering:crispEdges}
+        .atlas-boundary{fill:none;stroke:${palette.rule};stroke-width:1;stroke-dasharray:3 5}
+        .atlas-river{fill:none;stroke:${palette.rule};stroke-width:2}.atlas-state-name{font:16px monospace;fill:${palette.dim};letter-spacing:4px}
+        .atlas-road{fill:none;stroke:${palette.muted};stroke-width:2.5;stroke-dasharray:5 7}.atlas-road.off{stroke:${palette.dim};stroke-dasharray:1 9}
+        .atlas-road.traveled{stroke:${palette.ink};stroke-width:5;stroke-dasharray:none}.atlas-road.current{stroke:${palette.ink};stroke-width:3;stroke-dasharray:12 5}
+        .atlas-route-preview{fill:none;stroke:${palette.ink};stroke-width:6;stroke-linecap:round;stroke-dasharray:1 13}
+        .atlas-stop{cursor:pointer}.atlas-symbol{stroke:${palette.ink};stroke-width:2;fill:${palette.paper}}.atlas-stop.passed .atlas-symbol{fill:${palette.ink}}
+        .atlas-stop.off .atlas-symbol{stroke:${palette.dim}}.atlas-selection{fill:none;stroke:${palette.ink};stroke-width:2}
+        .atlas-leader{stroke:${palette.dim};stroke-width:1;fill:none}.atlas-hit{fill:transparent;stroke:none}
+        .atlas-label-bg{fill:${palette.paper};stroke:none}.atlas-label{font:bold 18px monospace;fill:${palette.ink}}
+        .atlas-stop.off .atlas-label{fill:${palette.muted}}.atlas-stop.selected .atlas-label-bg{fill:${palette.ink}}
+        .atlas-stop.selected .atlas-label{fill:${palette.paper}}.atlas-stop:focus .atlas-label-bg,.atlas-stop:hover .atlas-label-bg{fill:${palette.ink}}
+        .atlas-stop:focus .atlas-label,.atlas-stop:hover .atlas-label{fill:${palette.paper}}
+        .atlas-stop:focus{outline:none}.atlas-stop:focus .atlas-hit{stroke:${palette.ink};stroke-width:2;stroke-dasharray:4 3}
+        .atlas-you{fill:${palette.ink};stroke:${palette.paper};stroke-width:3;pointer-events:none}.atlas-caption{font:16px monospace;fill:${palette.ink}}
       </style>
       <defs>
         <clipPath id="atlas-clip"><rect x="1" y="1" width="${this.width - 2}" height="${this.height - 2}"/></clipPath>
@@ -182,9 +172,14 @@ ZT.Atlas = {
         <rect class="atlas-paper" x="6" y="6" width="${this.width - 12}" height="${this.height - 12}"/>
       </g>
       <g clip-path="url(#atlas-clip)">${states}${rivers}${names}${lines}${shapes}
-      ${inside(you) ? `<g aria-hidden="true"><path class="atlas-you" d="M${you.x},${you.y - 16} l12,23 -12,-5 -12,5 Z"/></g>` : ''}</g>
+      ${inside(you) ? `<g aria-hidden="true" pointer-events="none" transform="translate(${you.x},${you.y})">
+        ${s.vehicle.has ? `<path class="atlas-you" d="M-15,-4 H-10 V-10 H8 L12,-4 H16 V5 H-15 Z"/>
+          <path fill="${palette.paper}" d="M-7,-8 H0 V-3 H-7 Z M3,-8 H7 L10,-3 H3 Z"/>
+          <circle class="atlas-you" cx="-9" cy="6" r="4"/><circle class="atlas-you" cx="10" cy="6" r="4"/>` :
+          `<circle class="atlas-you" cy="-10" r="5"/><path class="atlas-you" d="M-4,-4 H4 V4 L10,13 H4 L0,7 -4,13 H-10 L-4,4 Z"/>`}
+      </g>` : ''}</g>
       <g aria-hidden="true"><text class="atlas-caption" x="18" y="22">N ↑ · WEST ←</text>
-        <path d="M20,${this.height - 22} v6 h${scaleWidth} v-6" stroke="#505050" fill="none" stroke-width="2"/>
+        <path d="M20,${this.height - 22} v6 h${scaleWidth} v-6" stroke="${palette.muted}" fill="none" stroke-width="2"/>
         <text class="atlas-caption" x="${26 + scaleWidth}" y="${this.height - 11}">~${scaleMiles} MI</text></g>
     </svg>`;
   },

@@ -131,6 +131,16 @@ ZT.ROLE_TIPS = {
   generalist: 'No bonus, no weakness. Steady.',
 };
 ZT.DEFAULT_NAMES = ['Mara', 'Dez', 'Holloway', 'June', 'Pike'];
+ZT.MAX_PARTY = 5;
+ZT.TRAITS = {
+  steady: { name: 'Steady', tip: '+1 personal morale on fed travel days.' },
+  hardy: { name: 'Hardy', tip: '3 less personal fatigue each travel day.' },
+  light_eater: { name: 'Light eater', tip: 'Needs 20% less food.' },
+  roadwise: { name: 'Roadwise', tip: '+4% daily mileage for the party, up to +12%.', group: true },
+  careful: { name: 'Careful', tip: 'Uses 4% less fuel, up to 12% less for the party.', group: true },
+  quiet: { name: 'Quiet', tip: '2 less travel noise per day, up to 6 less for the party.', group: true },
+};
+ZT.DEFAULT_TRAITS = ['roadwise', 'steady', 'careful', 'quiet', 'hardy'];
 ZT.NAME_POOL = ['Mara', 'Dez', 'Holloway', 'June', 'Pike', 'Ruth', 'Tobias', 'Wren', 'Cal', 'Ingrid', 'Ozzie', 'Lupe',
   'Harlan', 'Nadia', 'Booker', 'Sal', 'Odette', 'Grady', 'Fern', 'Marcus', 'Tess', 'Roy', 'Perpetua', 'Lyle', 'Aggie',
   'Vic', 'Corinne', 'Amos', 'Delia', 'Ike', 'Rosalind', 'Otis', 'Beth', 'Kwame', 'Sunny', 'Dale', 'Yusuf', 'Pearl'];

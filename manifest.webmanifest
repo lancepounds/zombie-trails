@@ -1,7 +1,7 @@
 {
   "name": "Zombie Trails",
   "short_name": "Zombie Trails",
-  "description": "Omaha to Boise. Five survivors, a station wagon, and the dead on every road.",
+  "description": "Omaha to Boise. Up to five survivors, a station wagon, and the dead on every road.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
