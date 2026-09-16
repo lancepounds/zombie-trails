@@ -9,6 +9,40 @@ ZT.Story = {
     generalist: ['Collector of small comforts', 'saves little things that remind everyone of home', 'I found a mint in my coat. We may have to hold an auction.'],
   },
   trait(m) { return this.traits[m.role] || this.traits.generalist; },
+  ambient: {
+    farm:     ['A silo leans over a fence line nobody mended in time. Nobody stops to look.',
+               'Rows of something once tended now just grow. Nobody can name the crop anymore.',
+               'A dog trots along a distant tree line, keeping its own counsel.',
+               'The smell of a barn carries a long way on a still day.'],
+    highway:  ['The radio catches a weather report. The man sounds bored. You envy him.',
+               'A green sign counts down the miles to a town that may not be there anymore.',
+               'Another wagon rusts on the shoulder, doors open, long picked over.',
+               'The centerline runs on, patient, indifferent to who is still using it.'],
+    river:    ['The water runs alongside for a while, going somewhere calmer than here.',
+               'A fish jumps. For a moment everyone in the wagon watches the same ripple.',
+               'The road follows the bank until the bank decides otherwise.',
+               'Cottonwoods lean over the water like they are listening for something.'],
+    plains:   ['Wind works at the windows. For a little while, it is the only thing following you.',
+               'The horizon does not get any closer no matter how long you watch it.',
+               'Grass runs to the edge of the world in every direction.',
+               'A hawk holds still in the wind, working less than the engine.'],
+    hills:    ['The road climbs, drops, and climbs again, like it cannot decide.',
+               'A switchback opens a view nobody asked for and everybody takes anyway.',
+               'The engine works harder here. So does everyone pretending not to notice.',
+               'Rock outcrops crowd the shoulder, patient as anything else out here.'],
+    desert:   ['Heat shimmers off the road ahead, turning distance into rumor.',
+               'Nothing moves out here except the wagon and, once, something that was not the wagon.',
+               'The land is flat and open and offers no place to hide, which is its own kind of honesty.',
+               'A dry wash crosses the road, empty now, in no hurry to be otherwise.'],
+    mountain: ['The grade steepens and conversation drops off with it.',
+               'Snow lingers in the shadowed cuts even when the road ahead is bare.',
+               'The wagon takes the switchbacks slower than anyone would like.',
+               'Pines close in on both sides, cutting the sky down to a strip.'],
+    suburb:   ['Rows of houses pass, curtains still drawn, mail still waiting.',
+               'A shopping cart sits alone in an intersection, going nowhere in particular.',
+               'Streetlights stand dark in daylight, waiting for a dusk that will not need them.',
+               'A cul-de-sac sign points to a street nobody has reason to take.'],
+  },
   line(s) {
     const alive = ZT.State.alive(s);
     if (!alive.length) return 'Nobody speaks.';
@@ -16,10 +50,8 @@ ZT.Story = {
     if (m.inf === 'symptomatic') return `${m.name} asks how much farther. Nobody gives a number.`;
     if (m.fatigue > 70) return `${m.name}: "I am not asleep. I am resting my eyes very thoroughly."`;
     if (s.day % 3 === 0) {
-      return ['The radio catches a weather report. The man sounds bored. You envy him.',
-        'Two shots in the distance. A long silence. Nobody asks for the radio.',
-        'A roadside sign promises hot coffee. Somebody has crossed out the word hot.',
-        'Wind works at the windows. For a little while, it is the only thing following you.'][Math.floor(s.day / 3) % 4];
+      const pool = this.ambient[ZT.region(s).terrain] || this.ambient.plains;
+      return pool[Math.floor(s.day / 3) % pool.length];
     }
     return `${m.name}: "${this.trait(m)[2]}"`;
   },

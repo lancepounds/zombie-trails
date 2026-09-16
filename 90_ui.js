@@ -625,6 +625,12 @@ function stepTravel() {
   goTravel();
 }
 
+const DAY_HINTS = [
+  'Take your time. The journey waits for your next choice.',
+  'No rush. The road will still be there when you are ready.',
+  'Nothing else is asking for you right now.',
+  'The wagon can sit a while longer.',
+];
 function showTravelDay(before) {
   screen = 'day-summary'; ctxData.art = 'travel'; travelling = null;
   const items = [{ label: 'Continue another day', hint: 'leave when you are ready' }, { label: 'Stop and check the party', key: 'Esc' }];
@@ -632,7 +638,7 @@ function showTravelDay(before) {
     <h2 class="mtitle">DAY ${S.day} ON THE ROAD</h2>
     <p>${ZT.n(S.miles - before.miles)} miles traveled. ${ZT.n(Math.max(0, before.food - S.inv.food))} lb of food used${S.vehicle.has ? `; ${ZT.n(Math.max(0, before.fuel - S.inv.fuel))} gallons of fuel used` : ''}.</p>
     <p class="road-note">${esc(ZT.Story.line(S))}</p>${partyEffects()}
-    <p class="scene-hint">Take your time. The journey waits for your next choice.</p>${menuHTML(items)}</div>`);
+    <p class="scene-hint">${DAY_HINTS[S.day % DAY_HINTS.length]}</p>${menuHTML(items)}</div>`);
   bindMenu(root, items, i => i === 0 ? startTravel() : goTravel());
   keyMap.escape = () => goTravel();
   ZT.Save.save(S);
