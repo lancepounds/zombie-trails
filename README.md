@@ -17,7 +17,46 @@ difficult choices, and dry humor. Guide your survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen
 that journey without turning it into a different kind of game.
 
-## What's new in v1.5
+## What's new in v1.6
+
+- **Animated roadside stops:** the wagon rolls into a gas station, the Last Bite
+  Diner, or a zombie-filled rest area and parks. The scene stays on screen until
+  you choose; outcomes show the parked wagon without replaying the arrival.
+- **More pixel-art detail:** pumps and hoses, diner windows and a swinging sign,
+  picnic tables and a map board, a camp tent and kettle, repair tools, drifting
+  smoke, passing fences, and clouds. Both monochrome themes are supported.
+- **Living road signs:** destination boards pass along the shoulder and show
+  the selected next stop and remaining leg mileage. Loose roadside and motel
+  signs sway, and torn cloth strips move in the wind. At sign encounters the
+  wagon rolls to a stop while you read; the arrival does not replay on outcomes.
+- **Animated camp shelters:** wooded and mountain routes have a small cabin
+  with chimney smoke; open country has a low roadside shelter. Shutters, porch
+  canvas, tent flaps, and the hanging kettle move gently. Rest-area buildings
+  have a loose door that moves in the breeze. These details are cosmetic and
+  never spend supplies or consume the journey's random seed.
+- **A diner encounter:** search the pantry, eat your own supplies in a booth,
+  or keep going. Rewards still cost time, food, or noise.
+- **Retro sound effects and ambience:** engine start and stop, gunfire, repairs,
+  medicine, refueling, supply finds, rain, wind, thunder, radio static, campfire
+  crackle, and distant zombie groans. All audio is synthesized locally; no sound
+  files need to load. Cosmetic effects never consume the game's random seed.
+- **Sound controls:** use **Sound: off/on** in the header. Sound starts off for
+  new players. Settings include volume, a test chime, and an independent ambient
+  sound switch. Preferences persist; audio needs a click, tap, or key press first.
+  Muting cancels queued notes, and hidden tabs go silent and pause the game loop.
+- **Reduced motion:** Settings can freeze scene animation, and your device's
+  reduced-motion preference is respected automatically. Reduced flashing also
+  suppresses the scavenging minigame's damage blink and full-screen flash.
+
+Existing saved journeys and settings continue to load.
+
+![Animated roadside sign and mountain camp](docs/previews/signs-and-camp.gif)
+
+The preview loops; in the game, arrivals play once and the scene waits for your
+choice. Turning off scene animation, or enabling your device's reduced-motion
+preference, keeps signs and shelters still.
+
+## Added in v1.5
 
 - Choose **one to five travelers**, including the driver. Names, roles, traits,
   and difficulty stay selected when setup is changed or redrawn.
@@ -149,13 +188,14 @@ concatenates it.
 
 | File | Purpose |
 |---|---|
-| `00_core.js` through `90_ui.js` | 20 source modules, loaded in filename order |
+| `00_core.js` through `90_ui.js` | 21 source modules, loaded in filename order |
 | `style.css` | Styling |
 | `icons.json` | Embedded icon data used by the build |
 | `build.js` | Generates the playable HTML, manifest, and app icons |
 | `test-story.js` | Story, save/load, and built-script checks |
 | `test-map.js` | Distances, branch states, route previews, estimates, and label layout |
 | `test-party.js` | Party size, traits, bonus caps, food use, estimates, old saves, and themes |
+| `test-audio.js` | Gesture unlock, mute, scheduled notes, ambience, hidden tabs, and audio fallback |
 | `sim.js` | Headless campaign simulator |
 | `index.html` | Generated playable game; do not edit by hand |
 
@@ -191,7 +231,8 @@ That rewrites `index.html`. Commit both the source change and the rebuilt file.
 | `70_scavenge.js` | Scavenging, menu and minigame |
 | `80_render.js` | The monochrome renderer, bitmap font, the map, ~80 scenes |
 | `82_atlas.js` | Interactive atlas, shortest paths to stops, leg estimates, and SVG layout |
-| `85_save_audio.js` | Save slots, memorials, high scores, square-wave audio |
+| `85_save_audio.js` | Save slots, settings, memorials, high scores |
+| `86_audio.js` | Synthesized effects, ambient sound, volume, gesture unlock, mute lifecycle |
 | `90_ui.js` | Screens, input, modals |
 
 ---
@@ -255,7 +296,7 @@ node build.js
 npm run test:quick
 ```
 
-The quick command runs `test-party.js`, `test-map.js`, `test-story.js`, and 480 simulated campaigns: 10 runs for
+The quick command runs `test-party.js`, `test-map.js`, `test-story.js`, `test-audio.js`, and 480 simulated campaigns: 10 runs for
 each combination of four difficulties, three choice policies, and four opening
 loadouts. For 1,920 simulated campaigns and the same story checks:
 
@@ -282,7 +323,22 @@ The v1.4 atlas and v1.4.1 palette were checked with native SVG renders of the
 overview, a zoomed view, and a journey in progress. For v1.4.2, all 101 scene
 renderers ran without scene errors in native Canvas with scanlines on and off;
 representative scenes, the scavenging view, and the app icon were visually checked.
-Browser testing has not been performed for these visual updates. Automated
+For v1.6, 1,920 simulated journeys completed without crashes. Native Canvas
+checks covered 1,648 scene/theme/weather/motion combinations, still frames in
+reduced-motion mode, settled arrivals, and graphics that leave the game state
+and random seed unchanged. Chromium checks covered a new journey, event
+choices, untimed scenes, saved settings, resumed games, both themes, and a
+390-pixel mobile viewport. Native OfflineAudioContext rendering verified that
+the effects produce audio without clipping and that muting cancels queued notes.
+The dependency-free audio tests cover hidden tabs and unsupported audio too.
+The later sign-and-camp update passed 1,718 native Canvas renders across both
+themes, seven weather conditions, one/five travelers, driving/walking, every
+route destination, and the shelter variants. Pixel comparisons confirmed that
+the new signboards, ribbons, shutter, porch canvas, tent flap, chimney smoke,
+and rest-area door move, and that motion-off freezes the scenes completely.
+Rendering preserves the game state and random seed; settled sign arrivals stay
+parked. Party, map, story, built-script, and audio checks also passed.
+Safari and physical mobile-device audio have not been tested. Automated
 campaigns and native renders do not verify the full page layout, touch interaction,
 or how the story feels.
 

@@ -7,6 +7,30 @@ const someone = (s) => X.someone(s);
 ZT.Events.add([
 /* ================= GENERAL ROAD ================= */
 {
+  id: 'road_last_bite_diner', cat: 'road', weight: 4, art: 'diner', cool: 30,
+  text: 'The LAST BITE DINER has a hand-painted sign promising breakfast all day. The windows are intact. The parking lot is empty. For a moment it looks like somewhere you could order coffee.',
+  choices: [
+    { text: 'Search the pantry', hint: 'half a day; possible food; makes noise',
+      do(s, c) {
+        X.delay(s, c, 0.5); X.noise(s, c, 6);
+        if (ZT.roll(s, 0.65)) {
+          X.give(s, c, 'food', ZT.rint(s, 10, 22));
+          return 'Behind the flour sacks: cans of peaches, crackers, and an enormous tin of coffee. Nobody finds a working coffee maker. This feels personal.';
+        }
+        X.noise(s, c, 6);
+        return 'The pantry has already been emptied. Something bumps against the freezer door from the inside. You leave the freezer alone.';
+      } },
+    { text: 'Eat your own supplies in a booth', hint: 'one meal of food; less fatigue; better morale',
+      show: s => s.inv.food >= ZT.Party.foodNeed(s) / 2,
+      do(s, c) {
+        X.take(s, c, 'food', ZT.Party.foodNeed(s) / 2); X.delay(s, c, 0.25);
+        X.fatigueAll(s, c, -6); X.morale(s, c, 4);
+        return 'You eat from your own bags at a real table. Somebody leaves a tip in bottle caps. The service was slow, but nobody tried to eat you.';
+      } },
+    { text: 'Keep going', hint: 'no cost', do() { return 'Breakfast all day. Maybe another day.'; } },
+  ],
+},
+{
   id: 'road_detour_sign', cat: 'road', weight: 6, art: 'sign',
   text: 'Someone has painted over the highway sign. The new lettering says NOT THAT WAY and an arrow pointing at the road you are on.',
   choices: [
