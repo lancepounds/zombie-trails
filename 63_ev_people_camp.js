@@ -261,6 +261,30 @@ ZT.Events.add([
 
 /* ================= CAMP / NIGHT ================= */
 {
+  id: 'c_missouri_flood_marker', cat: 'camp', when: 'camp', regions: ['missouri'], weight: 5, cool: 30, art: 'camp',
+  // At landmarks the legacy region helper falls back to missouri; keep this local.
+  cond: (s) => s.at === 'omaha' || (ZT.currentLeg(s) && ZT.currentLeg(s).region === 'missouri'),
+  text: 'The campsite has shade, level ground, and a flood-height mark on a fence post above your head. The first two features are excellent.',
+  choices: [
+    { text: 'Move camp onto the bank', hint: 'effort; safe ground',
+      do(s, c) { X.fatigueAll(s, c, 6); X.noise(s, c, -4); return 'The bank is less level and much less interesting to the river. Nothing reaches camp before morning.'; } },
+    { text: 'Stay and enjoy the level ground', hint: 'better sleep; wet supplies risk',
+      do(s, c) { X.fatigueAll(s, c, -10); if (ZT.roll(s, s.weather === 'rain' || s.weather === 'storm' ? 0.5 : 0.2)) { X.take(s, c, 'food', 8); X.fatigueAll(s, c, 14); return 'Water creeps in before dawn. The last food sack is already soaked when you move uphill. The fence post was trying to help.'; } X.morale(s, c, 3); return 'The river stays where you left it. Good sleep, with a historical warning standing nearby.'; } },
+  ],
+},
+{
+  id: 'c_owyhee_porch_light', cat: 'camp', when: 'camp', regions: ['owyhee'], weight: 5, cool: 30, art: 'camp',
+  text: 'From camp above the Boise valley, a porch light blinks on in the distance. It might mean people. It definitely means somebody has electricity, which feels extravagant.',
+  choices: [
+    { text: 'Watch quietly from camp', hint: 'less sleep; a little hope',
+      do(s, c) { X.fatigueAll(s, c, 4); X.morale(s, c, 6); X.noise(s, c, -4); return 'A second light comes on. Nobody waves. For an hour, the valley resembles somewhere people live.'; } },
+    { text: 'Signal with a flashlight', hint: 'morale; attracts attention',
+      do(s, c) { X.noise(s, c, 8); X.morale(s, c, 8); if (ZT.roll(s, 0.25 + ZT.Travel.threat(s) * 0.15)) { X.horde(s, c, 3); X.fatigueAll(s, c, 12); return 'The porch light blinks back. Something much closer moves toward your light. You finish the conversation in the dark.'; } return 'Three flashes back across the dark valley. No words, no promises, and enough to make tomorrow feel nearer.'; } },
+    { text: 'Sleep while the camp is quiet', hint: 'rest',
+      do(s, c) { X.fatigueAll(s, c, -8); return 'The light is still there at dawn, pale against the sky. You have slept long enough to do something with the hope.'; } },
+  ],
+},
+{
   id: 'c_watch_rotation', cat: 'camp', when: 'camp', weight: 8, art: 'camp',
   text: 'Watches have to be set. Somebody has to do the small hours and nobody wants them.',
   choices: [

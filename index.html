@@ -2560,6 +2560,79 @@ ZT.Events.add([
   ],
 },
 
+/* ================= REGIONAL ROAD ================= */
+{
+  id: 'road_missouri_seed_spill', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'road',
+  text: 'A split seed truck has covered the highway in kernels. The bags say NOT FOR HUMAN CONSUMPTION. For once, the instructions are quite clear.',
+  choices: [
+    { text: 'Clear a narrow path', hint: 'time and fatigue',
+      do(s, c) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 6); return 'A sheet of plywood makes a serviceable shovel. The road is usable again. Lunch remains a separate problem.'; } },
+    { text: 'Take the gravel shoulder', hint: 'quicker; rough footing',
+      do(s, c) { X.wear(s, c, 'tires', 5); X.fatigueAll(s, c, 4); return 'The shoulder is rutted but passable. Nobody suggests trying the corn.'; } },
+  ],
+},
+{
+  id: 'road_missouri_pump_ledger', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'well',
+  text: 'A farm pump has a notebook tied to it with baling twine. The last entry says WATER GOOD. HANDLE BITES. The handle has a very large splinter.',
+  choices: [
+    { text: 'Wrap the handle and fill up', hint: 'time; small recovery',
+      do(s, c) { X.delay(s, c, 0.3); for (const m of ZT.State.alive(s)) X.heal(s, c, m, 3); X.morale(s, c, 2); return 'A rag around the handle, a few minutes of pumping, and water for the road. You add HANDLE STILL BITES to the notebook.'; } },
+    { text: 'Keep moving', hint: 'no delay',
+      do() { return 'The notebook flaps against the pump as you leave. Somebody is still keeping records.'; } },
+  ],
+},
+{
+  id: 'road_missouri_county_barricade', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'sign',
+  text: 'Two county barricades block the exit. Beyond them the pavement looks intact. The detour arrow points at a cornfield and has apparently resigned.',
+  choices: [
+    { text: 'Scout the road beyond the barricade', hint: 'time; safer',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 5); return 'A washed-out culvert waits just beyond the rise. You find a farm lane around it and put the barricades back.'; } },
+    { text: 'Follow the field detour', hint: 'rough ground; small injury risk',
+      do(s, c) { X.wear(s, c, 'body', 6); X.fatigueAll(s, c, 6); if (ZT.roll(s, 0.2)) { const m = someone(s); X.injure(s, c, m, 8); return `${m.name} finds an irrigation rut the hard way. The arrow was technically correct.`; } return 'The lane comes out on pavement eventually. There is no sign at this end. Presumably you are meant to feel it.'; } },
+  ],
+},
+{
+  id: 'road_missouri_feed_store', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'cache',
+  text: 'The feed store is empty except for a locked employee cupboard. Through its mesh door you can see canned peaches. Employee morale used to matter here.',
+  choices: [
+    { text: 'Pry the cupboard open', hint: 'tools; time and food', show: (s) => s.inv.tools > 0,
+      do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, 6); X.give(s, c, 'food', 10); return 'The latch gives before the crowbar does. Peaches and crackers, with an inventory sheet that is now incorrect.'; } },
+    { text: 'Force it with a rock', hint: 'food; noise and injury risk',
+      do(s, c) { X.delay(s, c, 0.4); X.noise(s, c, 14); X.give(s, c, 'food', 8); if (ZT.roll(s, 0.25)) { const m = someone(s); X.injure(s, c, m, 10); return `${m.name} catches a knuckle on the mesh. Most of the peaches survive the method.`; } return 'The lock, two cans, and the silence are ruined. The remaining cans fit in the packs.'; } },
+    { text: 'Leave it', hint: 'safe', do() { return 'Somebody had a very secure lunch. They still do.'; } },
+  ],
+},
+{
+  id: 'road_lava_cinder_drift', cat: 'road', regions: ['lava'], weight: 4, cool: 30, art: 'lm_lava',
+  text: 'Wind has piled black cinders across the road. They look soft from a distance. Up close they look like a gravel company has a grievance.',
+  choices: [
+    { text: 'Clear the deepest ridge', hint: 'time and fatigue',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 8); return 'A shovel-width path becomes a wagon-width path. The wind begins filling it behind you immediately.'; } },
+    { text: 'Cross the drift slowly', hint: 'tires or tired feet',
+      do(s, c) { if (s.vehicle.has) X.wear(s, c, 'tires', 10); else X.fatigueAll(s, c, 12); X.noise(s, c, 4); return 'The cinders crunch under you for a hundred yards. On the far side, even ordinary gravel seems civilized.'; } },
+  ],
+},
+{
+  id: 'road_owyhee_canal_gate', cat: 'road', regions: ['owyhee'], weight: 4, cool: 30, art: 'bridge',
+  text: 'An irrigation gate has swung across the service road into the Boise valley. It is chained to a post. The post is not attached to the ground anymore.',
+  choices: [
+    { text: 'Lift the post and swing the gate', hint: 'time and effort',
+      do(s, c) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 7); X.noise(s, c, 4); return 'The entire security system moves six feet to the left. You put it back afterward. Standards matter.'; } },
+    { text: 'Go around by the canal road', hint: 'longer; costs fuel if driving',
+      do(s, c) { X.delay(s, c, 0.4); if (s.vehicle.has) X.take(s, c, 'fuel', 1); else X.fatigueAll(s, c, 8); return 'A quiet detour past dry headgates and abandoned boots. Boise remains on the same side of the horizon.'; } },
+  ],
+},
+{
+  id: 'road_bear_cattle_gate', cat: 'road', regions: ['bear'], weight: 4, cool: 30, art: 'field',
+  text: 'A cattle gate cuts across the road above the Bear River. Cattle stand on both sides of it, which suggests the gate is mostly a tradition.',
+  choices: [
+    { text: 'Walk the herd away from the opening', hint: 'time; quiet',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 6); X.noise(s, c, -4); return 'Patience and a long stick move the herd. The gate is closed behind you, for whatever good that does.'; } },
+    { text: 'Rattle the gate and push through', hint: 'noise; injury risk',
+      do(s, c) { X.noise(s, c, 12); if (ZT.roll(s, 0.25)) { const m = someone(s); X.injure(s, c, m, 12); return `One cow objects. ${m.name} discovers that the dead have not cornered the market on being difficult.`; } return 'The cattle scatter uphill. A few seconds later the echoes catch up and scatter them again.'; } },
+  ],
+},
+
 /* ================= WEATHER / ENVIRONMENT ================= */
 {
   id: 'wx_storm_shelter', cat: 'weather', weight: 8, cond: (s) => s.weather === 'storm', art: 'storm',
@@ -2723,6 +2796,75 @@ const someone = (s) => X.someone(s);
 const T = (s) => ZT.Travel.threat(s);
 
 ZT.Events.add([
+/* Local encounters for the stretches with the least regional content. */
+{
+  id: 'z_missouri_silo_shadow', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zsilo',
+  text: 'Three figures stand in the shade of a grain elevator. When your shadow reaches them, all three turn. That settles the question of whether to ask directions.',
+  choices: [
+    { text: 'Go around behind the machinery shed', hint: 'time; quiet',
+      do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, -5); X.fatigueAll(s, c, 4); return 'The shed blocks their view long enough. You emerge west of the elevator and keep the directions you already had.'; } },
+    { text: 'Shoot a path through', hint: '6 rounds; noise', show: (s) => s.inv.ammo >= 6,
+      do(s, c) { X.shots(s, c, 6); X.noise(s, c, 22); X.horde(s, c, 3); X.kills(s, 3); return 'The elevator throws every shot back at you. Three fall. Something farther off answers.'; } },
+    { text: 'Slip past close to the wall', hint: 'quick; exposure risk',
+      do(s, c) { X.noise(s, c, 4); if (ZT.roll(s, 0.25 + T(s) * 0.15)) { const m = someone(s); X.expose(s, c, m); X.injure(s, c, m, 8); return `${m.name} brushes past a reaching hand. The space beside the wall was narrower than it looked.`; } return 'They reach a moment late. You decide not to try that twice.'; } },
+  ],
+},
+{
+  id: 'z_missouri_ditch_hands', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zwater',
+  text: 'Something in the drainage ditch grips the broken guardrail. Then another hand appears. The road is dry. The ditch is getting crowded.',
+  choices: [
+    { text: 'Wait beyond their reach', hint: 'time; safest',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 5); X.noise(s, c, -5); return 'They climb onto the eastbound shoulder one at a time and follow a flapping tarp. You go west.'; } },
+    { text: 'Move past before they climb out', hint: 'quick; injury risk',
+      do(s, c) { X.noise(s, c, 8); if (ZT.roll(s, 0.3)) { const m = someone(s); X.injure(s, c, m, 12); X.wear(s, c, 'body', 5); return `${m.name} gets caught against the rail while avoiding the first one up. Nothing bites. Nothing apologizes.`; } return 'The last pair of hands reaches pavement after you have gone. A small margin is still a margin.'; } },
+  ],
+},
+{
+  id: 'z_missouri_weigh_station', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zwrecks',
+  text: 'The weigh station lane is jammed with trucks. Something inside the scale office pounds the glass every time the loose sign bangs in the wind.',
+  choices: [
+    { text: 'Keep your distance and move on', hint: 'safe',
+      do(s, c) { X.noise(s, c, -4); return 'The office keeps arguing with the sign. Neither notices you leave.'; } },
+    { text: 'Search the nearest truck cab quietly', hint: 'small supplies; risk',
+      do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, 6); if (ZT.roll(s, X.p(s, 0.65, 'scout', 0.15))) { X.give(s, c, 'food', 12); return 'Crackers, a sealed jar of peanut butter, and a logbook with no more entries. The glass holds while you leave.'; } const m = someone(s); X.injure(s, c, m, 14); X.noise(s, c, 12); return `${m.name} catches a sleeve on the cab door when the office window breaks. You leave the cupboard unopened.`; } },
+  ],
+},
+{
+  id: 'z_lava_tube_echo', cat: 'zombie', regions: ['lava'], weight: 5, cool: 30, art: 'ztunnel',
+  text: 'A lava tube opens beside the road. A stone drops inside and you hear movement. Then more movement. The cave appears to be occupied beyond its advertised capacity.',
+  choices: [
+    { text: 'Detour around the opening quietly', hint: 'time; rough ground',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 6); X.noise(s, c, -6); return 'You keep a ridge of black rock between you and the entrance. The echoes stay underground.'; } },
+    { text: 'Pass the mouth before they emerge', hint: 'quick; bite risk',
+      do(s, c) { X.noise(s, c, 12); X.wear(s, c, 'body', 6); if (ZT.roll(s, 0.22 + T(s) * 0.15)) { const m = someone(s); X.bite(s, c, m); return `${m.name} meets the first one at the lip of the tube. It is out of the dark before anyone is ready.`; } return 'Hands appear over the lip behind you. You do not stay to count them.'; } },
+    { text: 'Shoot the first ones out', hint: '8 rounds; echoes carry', show: (s) => s.inv.ammo >= 8,
+      do(s, c) { X.shots(s, c, 8); X.noise(s, c, 26); X.horde(s, c, 4); X.kills(s, 4); return 'Four drop across the entrance. The tube carries the shots a long way. You take the opening and leave.'; } },
+  ],
+},
+{
+  id: 'z_owyhee_mailboxes', cat: 'zombie', regions: ['owyhee'], weight: 5, cool: 30, art: 'zstreet',
+  text: 'A row of rural mailboxes marks the turn toward Boise. A figure stands at each of the first three. None has collected the mail in some time.',
+  choices: [
+    { text: 'Circle around by the empty field', hint: 'time; fatigue',
+      do(s, c) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 6); X.noise(s, c, -4); return 'The field brings you back onto the road beyond the boxes. Postal service remains suspended.'; } },
+    { text: 'Draw them away with a trade lot', hint: '1 trade good; noise', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.noise(s, c, 10); X.horde(s, c, 1); return 'A wind-up kitchen timer from the trade box goes over the far fence. The collection moves toward it. You move toward Boise.'; } },
+    { text: 'Push through the gap', hint: 'quick; exposure risk',
+      do(s, c) { X.noise(s, c, 8); if (ZT.roll(s, 0.28)) { const m = someone(s); X.expose(s, c, m); X.injure(s, c, m, 10); return `${m.name} comes away with a torn sleeve. Being nearly there has not made the dead more considerate.`; } return 'You clear the turn before they close the gap. One follows with an envelope stuck to its shoe.'; } },
+  ],
+},
+{
+  id: 'z_wasatch_carwash', cat: 'zombie', regions: ['wasatch'], weight: 5, cool: 30, art: 'zstreet',
+  text: 'The frontage road squeezes past a car wash. Shapes move behind the hanging rubber strips. The sign promises a spotless finish.',
+  choices: [
+    { text: 'Scout a way around the rear wall', hint: 'time; quieter',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 6); X.noise(s, c, -5); return 'The back lot connects to the next street. You leave the car wash to its current customers.'; } },
+    { text: 'Race past the entrance', hint: 'noise; injury risk',
+      do(s, c) { X.noise(s, c, 15); X.horde(s, c, 2); if (ZT.roll(s, 0.3 + T(s) * 0.15)) { const m = someone(s); X.injure(s, c, m, 18); X.wear(s, c, 'body', 8); return `${m.name} takes a hard knock getting clear of the first reaching arm. The finish is not spotless.`; } return 'The strips part behind you and a crowd spills into the road. You are already past the next corner.'; } },
+    { text: 'Shoot to hold the doorway', hint: '10 rounds; loud', show: (s) => s.inv.ammo >= 10,
+      do(s, c) { X.shots(s, c, 10); X.noise(s, c, 28); X.horde(s, c, 4); X.kills(s, 5); return 'The first five block the rest for a few seconds. It is enough time and a great deal of noise.'; } },
+  ],
+},
 {
   id: 'z_road_few', cat: 'zombie', weight: 10, art: 'zroad',
   text: (s) => `${ZT.rint(s, 4, 9)} of them are spread across both lanes, walking west, in no hurry. They have been walking a long time.`,
@@ -3348,6 +3490,30 @@ const someone = (s) => X.someone(s);
 ZT.Events.add([
 /* ================= VEHICLE ================= */
 {
+  id: 'v_missouri_cottonwood_filter', cat: 'vehicle', regions: ['missouri'], weight: 5, cool: 30,
+  cond: (s) => s.vehicle.has, art: 'hood',
+  text: 'The grille has collected a felt blanket of cottonwood fluff. The wagon is trying to breathe through Nebraska.',
+  choices: [
+    { text: 'Stop and clean the grille', hint: 'time; small repair',
+      do(s, c) { X.delay(s, c, 0.3); X.repair(s, c, 'engine', 5); X.fatigueAll(s, c, 4); return 'A brush, a stick, and a surprising volume of fluff. The temperature needle settles. The tree owes you an afternoon.'; } },
+    { text: 'Keep driving until the next stop', hint: 'engine wear',
+      do(s, c) { X.wear(s, c, 'engine', 10); if (ZT.roll(s, 0.2)) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 6); return 'The needle reaches the red before the next stop. You clean the grille beside the road anyway, with added steam.'; } return 'The wagon runs hot all afternoon. The fluff gets to travel west for free.'; } },
+  ],
+},
+{
+  id: 'v_laramie_roof_lashings', cat: 'vehicle', regions: ['laramie'], weight: 5, cool: 30,
+  cond: (s) => s.vehicle.has, art: 'underneath',
+  text: 'On a Laramie Range climb, the roof load shifts with a scrape. A cord trails past the window. Nobody remembers leaving that much spare cord.',
+  choices: [
+    { text: 'Stop and retie the load', hint: 'time and fatigue',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 6); X.repair(s, c, 'body', 4); return 'The knots are redone out of the wind. The roof rack is tightened. Everyone agrees the last knots belonged to someone else.'; } },
+    { text: 'Replace the rack clamp', hint: '1 part; quicker', show: (s) => s.inv.parts >= 1,
+      do(s, c) { X.take(s, c, 'parts', 1); X.delay(s, c, 0.2); X.repair(s, c, 'body', 12); return 'A spare clamp fits after a little persuasion. The load is secure enough to become somebody else\'s worry: gravity\'s.'; } },
+    { text: 'Keep driving to lower ground', hint: 'body damage; supply risk',
+      do(s, c) { X.wear(s, c, 'body', 9); X.noise(s, c, 6); if (ZT.roll(s, 0.35)) { X.take(s, c, 'food', 12); return 'A food sack goes over the side and down a slope that nobody volunteers to climb. The rest stays put.'; } return 'The load slides another inch and stops. Lower ground arrives before the next inch does.'; } },
+  ],
+},
+{
   id: 'v_overheat_warn', cat: 'vehicle', weight: 7, cond: (s) => s.vehicle.has && s.vehicle.engine < 70, art: 'hood',
   text: 'Steam. Not a lot of it, but it is coming from under the hood and it was not doing that this morning.',
   choices: [
@@ -3538,6 +3704,45 @@ ZT.Events.add([
 },
 
 /* ================= HEALTH / ILLNESS / INFECTION ================= */
+{
+  id: 'h_missouri_wet_boots', cat: 'health', regions: ['missouri'], weight: 4, cool: 30, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `${c.m.name} has had wet boots since crossing a drainage ditch. Every step now comes with a private negotiation.`,
+  choices: [
+    { text: 'Stop and dry the boots properly', hint: 'time; avoids worse injury',
+      do(s, c) { X.delay(s, c, 0.4); X.injure(s, c, c.m, 3); X.fatigue(s, c, c.m, -5); return `${c.m.name} sits with bare feet while the socks dry. The boots smell worse. Walking feels better.`; } },
+    { text: 'Use dressings from the medicine kit', hint: '1 kit; quick', show: (s) => s.inv.medicine >= 1,
+      do(s, c) { X.take(s, c, 'medicine', 1); X.heal(s, c, c.m, 4); X.fatigue(s, c, c.m, -4); return 'Clean dressings and dry foot wraps buy a comfortable afternoon. The kit is a little emptier.'; } },
+    { text: 'Keep moving', hint: 'injury and fatigue',
+      do(s, c) { X.injure(s, c, c.m, 14); X.fatigue(s, c, c.m, 12); return `${c.m.name} stops mentioning the boots. The limp continues the conversation.`; } },
+  ],
+},
+{
+  id: 'h_missouri_grain_dust', cat: 'health', regions: ['missouri'], weight: 4, cool: 30, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `Wind shakes grain dust from a torn storage bag beside the road. ${c.m.name} has been coughing since you passed it.`,
+  choices: [
+    { text: 'Rest out of the dust', hint: 'time; mild illness',
+      do(s, c) { X.delay(s, c, 0.4); X.sicken(s, c, c.m, 5); X.fatigue(s, c, c.m, -6); return `${c.m.name} rests in clean air until the coughing eases. Nothing useful happens for a while. It is still useful.`; } },
+    { text: 'Use medicine and take a short break', hint: '1 kit', show: (s) => s.inv.medicine >= 1,
+      do(s, c) { X.take(s, c, 'medicine', 1); X.delay(s, c, 0.2); X.heal(s, c, c.m, 3); return 'A kit is opened and the road waits. By the time you move on, breathing sounds like breathing again.'; } },
+    { text: 'Push on through it', hint: 'illness and fatigue',
+      do(s, c) { X.sicken(s, c, c.m, 18); X.fatigue(s, c, c.m, 10); return `${c.m.name} makes the miles and spends the evening coughing them back up.`; } },
+  ],
+},
+{
+  id: 'h_lava_heel_blister', cat: 'health', regions: ['lava'], weight: 4, cool: 30, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `A piece of volcanic grit has worn through ${c.m.name}'s sock. The stone is small. Its ambitions are not.`,
+  choices: [
+    { text: 'Stop and pad the boot', hint: 'time; minor injury',
+      do(s, c) { X.delay(s, c, 0.3); X.injure(s, c, c.m, 4); X.fatigue(s, c, c.m, -4); return 'The grit comes out, a folded strip of cloth goes in, and the road becomes tolerable again.'; } },
+    { text: 'Use a sterile dressing', hint: '1 kit; quick', show: (s) => s.inv.medicine >= 1,
+      do(s, c) { X.take(s, c, 'medicine', 1); X.heal(s, c, c.m, 4); return `${c.m.name} can put weight on the heel again. A very small stone has consumed a very useful dressing.`; } },
+    { text: 'Keep moving', hint: 'injury; lost stamina',
+      do(s, c) { X.injure(s, c, c.m, 16); X.fatigue(s, c, c.m, 12); return `${c.m.name} changes the way they walk. By dusk the other leg has a complaint too.`; } },
+  ],
+},
 {
   id: 'h_bad_water', cat: 'health', weight: 7, art: 'sick',
   text: (s) => { const m = someone(s); return `${m.name} has been sick since the middle of the night. So has whoever drank from the same jug.`; },
@@ -4034,6 +4239,30 @@ ZT.Events.add([
 },
 
 /* ================= CAMP / NIGHT ================= */
+{
+  id: 'c_missouri_flood_marker', cat: 'camp', when: 'camp', regions: ['missouri'], weight: 5, cool: 30, art: 'camp',
+  // At landmarks the legacy region helper falls back to missouri; keep this local.
+  cond: (s) => s.at === 'omaha' || (ZT.currentLeg(s) && ZT.currentLeg(s).region === 'missouri'),
+  text: 'The campsite has shade, level ground, and a flood-height mark on a fence post above your head. The first two features are excellent.',
+  choices: [
+    { text: 'Move camp onto the bank', hint: 'effort; safe ground',
+      do(s, c) { X.fatigueAll(s, c, 6); X.noise(s, c, -4); return 'The bank is less level and much less interesting to the river. Nothing reaches camp before morning.'; } },
+    { text: 'Stay and enjoy the level ground', hint: 'better sleep; wet supplies risk',
+      do(s, c) { X.fatigueAll(s, c, -10); if (ZT.roll(s, s.weather === 'rain' || s.weather === 'storm' ? 0.5 : 0.2)) { X.take(s, c, 'food', 8); X.fatigueAll(s, c, 14); return 'Water creeps in before dawn. The last food sack is already soaked when you move uphill. The fence post was trying to help.'; } X.morale(s, c, 3); return 'The river stays where you left it. Good sleep, with a historical warning standing nearby.'; } },
+  ],
+},
+{
+  id: 'c_owyhee_porch_light', cat: 'camp', when: 'camp', regions: ['owyhee'], weight: 5, cool: 30, art: 'camp',
+  text: 'From camp above the Boise valley, a porch light blinks on in the distance. It might mean people. It definitely means somebody has electricity, which feels extravagant.',
+  choices: [
+    { text: 'Watch quietly from camp', hint: 'less sleep; a little hope',
+      do(s, c) { X.fatigueAll(s, c, 4); X.morale(s, c, 6); X.noise(s, c, -4); return 'A second light comes on. Nobody waves. For an hour, the valley resembles somewhere people live.'; } },
+    { text: 'Signal with a flashlight', hint: 'morale; attracts attention',
+      do(s, c) { X.noise(s, c, 8); X.morale(s, c, 8); if (ZT.roll(s, 0.25 + ZT.Travel.threat(s) * 0.15)) { X.horde(s, c, 3); X.fatigueAll(s, c, 12); return 'The porch light blinks back. Something much closer moves toward your light. You finish the conversation in the dark.'; } return 'Three flashes back across the dark valley. No words, no promises, and enough to make tomorrow feel nearer.'; } },
+    { text: 'Sleep while the camp is quiet', hint: 'rest',
+      do(s, c) { X.fatigueAll(s, c, -8); return 'The light is still there at dawn, pale against the sky. You have slept long enough to do something with the hope.'; } },
+  ],
+},
 {
   id: 'c_watch_rotation', cat: 'camp', when: 'camp', weight: 8, art: 'camp',
   text: 'Watches have to be set. Somebody has to do the small hours and nobody wants them.',

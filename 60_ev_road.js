@@ -610,6 +610,79 @@ ZT.Events.add([
   ],
 },
 
+/* ================= REGIONAL ROAD ================= */
+{
+  id: 'road_missouri_seed_spill', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'road',
+  text: 'A split seed truck has covered the highway in kernels. The bags say NOT FOR HUMAN CONSUMPTION. For once, the instructions are quite clear.',
+  choices: [
+    { text: 'Clear a narrow path', hint: 'time and fatigue',
+      do(s, c) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 6); return 'A sheet of plywood makes a serviceable shovel. The road is usable again. Lunch remains a separate problem.'; } },
+    { text: 'Take the gravel shoulder', hint: 'quicker; rough footing',
+      do(s, c) { X.wear(s, c, 'tires', 5); X.fatigueAll(s, c, 4); return 'The shoulder is rutted but passable. Nobody suggests trying the corn.'; } },
+  ],
+},
+{
+  id: 'road_missouri_pump_ledger', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'well',
+  text: 'A farm pump has a notebook tied to it with baling twine. The last entry says WATER GOOD. HANDLE BITES. The handle has a very large splinter.',
+  choices: [
+    { text: 'Wrap the handle and fill up', hint: 'time; small recovery',
+      do(s, c) { X.delay(s, c, 0.3); for (const m of ZT.State.alive(s)) X.heal(s, c, m, 3); X.morale(s, c, 2); return 'A rag around the handle, a few minutes of pumping, and water for the road. You add HANDLE STILL BITES to the notebook.'; } },
+    { text: 'Keep moving', hint: 'no delay',
+      do() { return 'The notebook flaps against the pump as you leave. Somebody is still keeping records.'; } },
+  ],
+},
+{
+  id: 'road_missouri_county_barricade', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'sign',
+  text: 'Two county barricades block the exit. Beyond them the pavement looks intact. The detour arrow points at a cornfield and has apparently resigned.',
+  choices: [
+    { text: 'Scout the road beyond the barricade', hint: 'time; safer',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 5); return 'A washed-out culvert waits just beyond the rise. You find a farm lane around it and put the barricades back.'; } },
+    { text: 'Follow the field detour', hint: 'rough ground; small injury risk',
+      do(s, c) { X.wear(s, c, 'body', 6); X.fatigueAll(s, c, 6); if (ZT.roll(s, 0.2)) { const m = someone(s); X.injure(s, c, m, 8); return `${m.name} finds an irrigation rut the hard way. The arrow was technically correct.`; } return 'The lane comes out on pavement eventually. There is no sign at this end. Presumably you are meant to feel it.'; } },
+  ],
+},
+{
+  id: 'road_missouri_feed_store', cat: 'road', regions: ['missouri'], weight: 4, cool: 30, art: 'cache',
+  text: 'The feed store is empty except for a locked employee cupboard. Through its mesh door you can see canned peaches. Employee morale used to matter here.',
+  choices: [
+    { text: 'Pry the cupboard open', hint: 'tools; time and food', show: (s) => s.inv.tools > 0,
+      do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, 6); X.give(s, c, 'food', 10); return 'The latch gives before the crowbar does. Peaches and crackers, with an inventory sheet that is now incorrect.'; } },
+    { text: 'Force it with a rock', hint: 'food; noise and injury risk',
+      do(s, c) { X.delay(s, c, 0.4); X.noise(s, c, 14); X.give(s, c, 'food', 8); if (ZT.roll(s, 0.25)) { const m = someone(s); X.injure(s, c, m, 10); return `${m.name} catches a knuckle on the mesh. Most of the peaches survive the method.`; } return 'The lock, two cans, and the silence are ruined. The remaining cans fit in the packs.'; } },
+    { text: 'Leave it', hint: 'safe', do() { return 'Somebody had a very secure lunch. They still do.'; } },
+  ],
+},
+{
+  id: 'road_lava_cinder_drift', cat: 'road', regions: ['lava'], weight: 4, cool: 30, art: 'lm_lava',
+  text: 'Wind has piled black cinders across the road. They look soft from a distance. Up close they look like a gravel company has a grievance.',
+  choices: [
+    { text: 'Clear the deepest ridge', hint: 'time and fatigue',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 8); return 'A shovel-width path becomes a wagon-width path. The wind begins filling it behind you immediately.'; } },
+    { text: 'Cross the drift slowly', hint: 'tires or tired feet',
+      do(s, c) { if (s.vehicle.has) X.wear(s, c, 'tires', 10); else X.fatigueAll(s, c, 12); X.noise(s, c, 4); return 'The cinders crunch under you for a hundred yards. On the far side, even ordinary gravel seems civilized.'; } },
+  ],
+},
+{
+  id: 'road_owyhee_canal_gate', cat: 'road', regions: ['owyhee'], weight: 4, cool: 30, art: 'bridge',
+  text: 'An irrigation gate has swung across the service road into the Boise valley. It is chained to a post. The post is not attached to the ground anymore.',
+  choices: [
+    { text: 'Lift the post and swing the gate', hint: 'time and effort',
+      do(s, c) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 7); X.noise(s, c, 4); return 'The entire security system moves six feet to the left. You put it back afterward. Standards matter.'; } },
+    { text: 'Go around by the canal road', hint: 'longer; costs fuel if driving',
+      do(s, c) { X.delay(s, c, 0.4); if (s.vehicle.has) X.take(s, c, 'fuel', 1); else X.fatigueAll(s, c, 8); return 'A quiet detour past dry headgates and abandoned boots. Boise remains on the same side of the horizon.'; } },
+  ],
+},
+{
+  id: 'road_bear_cattle_gate', cat: 'road', regions: ['bear'], weight: 4, cool: 30, art: 'field',
+  text: 'A cattle gate cuts across the road above the Bear River. Cattle stand on both sides of it, which suggests the gate is mostly a tradition.',
+  choices: [
+    { text: 'Walk the herd away from the opening', hint: 'time; quiet',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 6); X.noise(s, c, -4); return 'Patience and a long stick move the herd. The gate is closed behind you, for whatever good that does.'; } },
+    { text: 'Rattle the gate and push through', hint: 'noise; injury risk',
+      do(s, c) { X.noise(s, c, 12); if (ZT.roll(s, 0.25)) { const m = someone(s); X.injure(s, c, m, 12); return `One cow objects. ${m.name} discovers that the dead have not cornered the market on being difficult.`; } return 'The cattle scatter uphill. A few seconds later the echoes catch up and scatter them again.'; } },
+  ],
+},
+
 /* ================= WEATHER / ENVIRONMENT ================= */
 {
   id: 'wx_storm_shelter', cat: 'weather', weight: 8, cond: (s) => s.weather === 'storm', art: 'storm',
