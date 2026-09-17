@@ -544,7 +544,8 @@ button, .place, .diff, .q, .p { touch-action: manipulation; }   /* kills the 300
 <div class="tube" id="tube">
   <div class="brand">
     <span>Zombie Trails</span>
-    <span>Omaha &rarr; Boise &middot; v1.5</span>
+    <span>Omaha &rarr; Boise &middot; v1.6</span>
+    <button id="sound-toggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Enable sound">Sound: off</button>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode">Dark mode</button>
   </div>
   <main id="screen" tabindex="-1"></main>
@@ -1955,6 +1956,30 @@ const someone = (s) => X.someone(s);
 
 ZT.Events.add([
 /* ================= GENERAL ROAD ================= */
+{
+  id: 'road_last_bite_diner', cat: 'road', weight: 4, art: 'diner', cool: 30,
+  text: 'The LAST BITE DINER has a hand-painted sign promising breakfast all day. The windows are intact. The parking lot is empty. For a moment it looks like somewhere you could order coffee.',
+  choices: [
+    { text: 'Search the pantry', hint: 'half a day; possible food; makes noise',
+      do(s, c) {
+        X.delay(s, c, 0.5); X.noise(s, c, 6);
+        if (ZT.roll(s, 0.65)) {
+          X.give(s, c, 'food', ZT.rint(s, 10, 22));
+          return 'Behind the flour sacks: cans of peaches, crackers, and an enormous tin of coffee. Nobody finds a working coffee maker. This feels personal.';
+        }
+        X.noise(s, c, 6);
+        return 'The pantry has already been emptied. Something bumps against the freezer door from the inside. You leave the freezer alone.';
+      } },
+    { text: 'Eat your own supplies in a booth', hint: 'one meal of food; less fatigue; better morale',
+      show: s => s.inv.food >= ZT.Party.foodNeed(s) / 2,
+      do(s, c) {
+        X.take(s, c, 'food', ZT.Party.foodNeed(s) / 2); X.delay(s, c, 0.25);
+        X.fatigueAll(s, c, -6); X.morale(s, c, 4);
+        return 'You eat from your own bags at a real table. Somebody leaves a tip in bottle caps. The service was slow, but nobody tried to eat you.';
+      } },
+    { text: 'Keep going', hint: 'no cost', do() { return 'Breakfast all day. Maybe another day.'; } },
+  ],
+},
 {
   id: 'road_detour_sign', cat: 'road', weight: 6, art: 'sign',
   text: 'Someone has painted over the highway sign. The new lettering says NOT THAT WAY and an arrow pointing at the road you are on.',
@@ -5829,11 +5854,37 @@ scenes.travel = function (c, s, t, opt) {
   else if (terrain === 'plains' || terrain === 'desert') { for (let i = 0; i < 5; i++) { const x = (((i * 90 - off * 0.12) % 450) + 450) % 450 - 40; if (x < W + 20) { px(c, x, horizon - 12, 1, 12); px(c, x - 4, horizon - 13, 9, 1); } } }
   // mid layer: poles
   poles(c, off * 0.6, horizon + 2);
+  // Slow clouds and a passing fence give the roadside depth without road debris.
+  for (let i = 0; i < 3; i++) {
+    const x = ((i * 127 - off * 0.08) % 400 + 400) % 400 - 40;
+    line(c, x, 22 + i * 9, x + 24, 22 + i * 9);
+    line(c, x + 5, 20 + i * 9, x + 17, 20 + i * 9);
+  }
+  for (let i = 0; i < 10; i++) {
+    const x = ((i * 40 - off * 0.7) % 400 + 400) % 400 - 40;
+    px(c, x, horizon - 4, 2, 10);
+    line(c, x, horizon, x + 40, horizon);
+  }
   // road
   road(c, horizon + 6);
+  // Actual next-stop signs pass on the far shoulder, clear of the driving lane.
+  const leg = ZT.currentLeg(s);
+  if (leg) {
+    const signX = 360 - ((off * 0.72 + 120) % 560 + 560) % 560;
+    destinationSign(c, Math.round(signX), horizon + 2, ZT.NODES[leg.to].name,
+      Math.max(0, Math.ceil(leg.miles - s.legMiles)), t);
+  }
   // the wagon (or walkers on foot)
   const bob = Math.sin(off * 0.9) * (s.pace === 'hard' ? 1.2 : 0.6);
-  if (s.vehicle.has) wagon(c, 132, horizon + 6 + bob, off, !!s.vehicle.broken);
+  if (s.vehicle.has) {
+    wagon(c, 132, horizon + 6 + bob, off, !!s.vehicle.broken);
+    // Tailpipe puffs stay behind the wagon. Engine trouble has a visible cue.
+    for (let i = 0; i < 3; i++) {
+      const p = (t * 7 + i * 4) % 12;
+      grey(c, 130 - p * 2, horizon + 17 - p / 3, 3 + p / 2, 2, 'g25');
+    }
+    if (s.vehicle.engine < 35 || s.vehicle.broken === 'engine') smoke(c, 171, horizon + 9, t, 25);
+  }
   else { const n = ZT.State.aliveCount(s); for (let i = 0; i < n; i++) figure(c, 130 + i * 10, horizon + 12 + Math.sin(off + i) * 0.6, off * 1.4 + i, false); }
   weatherFX(c, s.weather, t, opt.reduce);
 };
@@ -5845,6 +5896,25 @@ function barn(c, x, y) {
   px(c, x + 12, y - 8, 6, 8);
   px(c, x + 34, y - 20, 6, 20); // silo
   line(c, x + 34, y - 20, x + 37, y - 24); line(c, x + 37, y - 24, x + 40, y - 20);
+}
+
+// Small integer-pixel wind cycles keep the old bitmap look without shimmering.
+// Only display time is used: scenery must never advance the game's seeded RNG.
+function windCloth(c, x, y, t, length) {
+  for (let i = 0; i < length; i++) {
+    const wave = Math.round(Math.sin(t * 1.8 - i * 0.55) * (i / length) * 3);
+    px(c, x + i, y + wave, 1, i < length - 3 ? 3 : 2);
+  }
+}
+function destinationSign(c, x, y, name, miles, t) {
+  const label = name.toUpperCase(), w = Math.max(64, tw(label) + 12);
+  px(c, x + 9, y - 29, 2, 29); px(c, x + w - 11, y - 29, 2, 29);
+  c.fillStyle = PAPER; c.fillRect(x, y - 40, w, 24);
+  rect(c, x, y - 40, w, 24);
+  bmp(c, label, x + 6, y - 35);
+  bmp(c, miles + ' MI', x + 6, y - 25);
+  // A torn survey ribbon, not a flashing light, catches the wind.
+  windCloth(c, x + w - 9, y - 13, t, 13);
 }
 
 scenes.title = function (c, s, t) {
@@ -5866,8 +5936,9 @@ function sceneRoadWith(drawer) {
     const horizon = 92;
     if (ZT.region(s).terrain === 'mountain') mountains(c, 5, horizon - 4, 40);
     else skyline(c, 13, horizon - 4, 16, 0.4, 'town');
-    ground(c, horizon + 6, t * 20);
-    for (let x = -32; x < W; x += 32) px(c, x + 32 - ((t * 20) % 32), horizon + 28, 14, 2);
+    ground(c, horizon + 6, 0);
+    c.fillStyle = PAPER; c.fillRect(0, horizon + 7, W, 35);
+    road(c, horizon + 6);
     drawer(c, s, t, horizon, opt);
     weatherFX(c, s.weather, t, opt && opt.reduce);
   };
@@ -5877,11 +5948,19 @@ scenes.road = sceneRoadWith(function (c, s, t, hz) {
   if (s.vehicle.has) wagon(c, 140, hz + 6, t * 4, !!s.vehicle.broken);
   else for (let i = 0; i < ZT.State.aliveCount(s); i++) figure(c, 138 + i * 10, hz + 12, t * 3 + i, false);
 });
-scenes.sign = sceneRoadWith(function (c, s, t, hz) {
+scenes.sign = sceneRoadWith(function (c, s, t, hz, opt) {
   px(c, 60, hz - 34, 4, 40); px(c, 96, hz - 34, 4, 40);
-  px(c, 46, hz - 46, 68, 26); c.fillStyle = PAPER; c.fillRect(48, hz - 44, 64, 22); c.fillStyle = INK;
-  px(c, 54, hz - 38, 42, 2); px(c, 54, hz - 32, 34, 2); px(c, 54, hz - 26, 46, 2);
-  if (s.vehicle.has) wagon(c, 190, hz + 6, t * 3, false);
+  const sway = Math.round(Math.sin(t * 0.9) * 2);
+  line(c, 62, hz - 36, 62 + sway, hz - 42);
+  line(c, 98, hz - 36, 98 + sway, hz - 42);
+  px(c, 46 + sway, hz - 46, 68, 26);
+  c.fillStyle = PAPER; c.fillRect(48 + sway, hz - 44, 64, 22);
+  px(c, 54 + sway, hz - 38, 42, 2); px(c, 54 + sway, hz - 32, 34, 2);
+  line(c, 54 + sway, hz - 26, 98 + sway, hz - 26);
+  line(c, 94 + sway, hz - 29, 99 + sway, hz - 26);
+  line(c, 94 + sway, hz - 23, 99 + sway, hz - 26);
+  windCloth(c, 100, hz - 14, t, 22);
+  parkedArrival(c, s, t, opt, 190, hz + 6);
 });
 scenes.wrecks = sceneRoadWith(function (c, s, t, hz) {
   for (let i = 0; i < 7; i++) { const x = 8 + i * 42, y = hz + 4 + (i % 3) * 6; carHulk(c, x, y, i); }
@@ -6000,7 +6079,12 @@ scenes.motel = sceneRoadWith(function (c, s, t, hz) {
   px(c, 40, hz - 34, 200, 34); c.fillStyle = PAPER; c.fillRect(42, hz - 32, 196, 30); c.fillStyle = INK;
   for (let i = 0; i < 8; i++) px(c, 50 + i * 24, hz - 22, 10, 22);
   px(c, 36, hz - 38, 208, 4);
-  px(c, 250, hz - 46, 4, 46); px(c, 240, hz - 56, 26, 14);
+  px(c, 250, hz - 46, 4, 46);
+  const sway = Math.round(Math.sin(t * 0.7) * 2);
+  line(c, 251, hz - 48, 253 + sway, hz - 52);
+  c.fillStyle = PAPER; c.fillRect(231 + sway, hz - 65, 45, 15);
+  rect(c, 231 + sway, hz - 65, 45, 15); bmp(c, 'MOTEL', 241 + sway, hz - 60);
+  windCloth(c, 241, hz - 8, t, 13);
 });
 scenes.ferry = scenes.water;
 scenes.night = function (c, s, t, opt) {
@@ -6192,6 +6276,184 @@ scenes.zhouse = sceneRoadWith(function (c, s, t, hz) {
   figure(c, 210, hz - 8, t, true);
 });
 
+/* ---------- roadside picture book ----------
+   The arrival plays once per event; the page never advances on a timer. */
+function smoke(c, x, y, t, height) {
+  for (let i = 0; i < 8; i++) {
+    const p = (t * 9 + i * 5) % height;
+    grey(c, x + Math.sin(i + t) * 3 + p / 6, y - p, 3 + p / 5, 2, 'g25');
+  }
+}
+function parkedArrival(c, s, t, opt, x, y) {
+  const age = opt && opt.settled ? 4 : (opt && opt.elapsed != null ? opt.elapsed : t);
+  const p = Math.min(1, Math.max(0, age / 3));
+  const eased = 1 - Math.pow(1 - p, 3);
+  const xx = -48 + (x + 48) * eased;
+  if (s.vehicle.has) {
+    wagon(c, xx, y, p < 1 ? t * 10 : 0, false);
+    if (p < 1) grey(c, xx - 9, y + 14, 8, 2, 'g25');
+  } else {
+    const n = Math.max(1, ZT.State.aliveCount(s));
+    for (let i = 0; i < n; i++) figure(c, xx - i * 8, y + 3, p < 1 ? t * 4 + i : 0, false);
+  }
+}
+function stopBackdrop(c, s) {
+  mountains(c, 44, 75, 20);
+  trees(c, 88, 94, 0.7);
+  ground(c, 108, 0);
+  c.fillStyle = PAPER; c.fillRect(0, 118, W, 35);
+  road(c, 117);
+}
+function pump(c, x, y) {
+  rect(c, x, y, 13, 23); px(c, x + 2, y + 2, 9, 6);
+  bmp(c, '0', x + 5, y + 3, PAPER);
+  px(c, x - 2, y + 23, 17, 2);
+  line(c, x + 13, y + 4, x + 18, y + 7);
+  line(c, x + 18, y + 7, x + 18, y + 19);
+  line(c, x + 18, y + 19, x + 14, y + 17);
+}
+scenes.station = function (c, s, t, opt) {
+  stopBackdrop(c, s);
+  c.fillStyle = PAPER; c.fillRect(143, 61, 129, 47);
+  rect(c, 143, 61, 129, 47); px(c, 139, 57, 137, 5);
+  plate(c, 'LAST CHANCE FUEL', 155, 66);
+  rect(c, 151, 77, 37, 21); rect(c, 199, 77, 18, 31); rect(c, 227, 77, 36, 21);
+  line(c, 153, 96, 185, 80); line(c, 229, 80, 259, 95);
+  px(c, 54, 57, 3, 51); px(c, 119, 57, 3, 51);
+  px(c, 44, 50, 89, 7); plate(c, 'GAS', 81, 51);
+  pump(c, 65, 82); pump(c, 99, 82);
+  rect(c, 12, 53, 25, 29); plate(c, 'FUEL', 15, 58); plate(c, '--', 19, 70); px(c, 23, 82, 2, 26);
+  parkedArrival(c, s, t, opt, 81, 121);
+  weatherFX(c, s.weather, t, opt && opt.reduce);
+};
+scenes.fuel = scenes.station;
+scenes.diner = function (c, s, t, opt) {
+  stopBackdrop(c, s);
+  c.fillStyle = PAPER; c.fillRect(94, 59, 188, 50);
+  rect(c, 94, 59, 188, 50); px(c, 91, 55, 194, 4);
+  for (let x = 96; x < 281; x += 8) px(c, x, 62, 4, 6);
+  rect(c, 122, 37, 132, 17); plate(c, 'LAST BITE DINER', 131, 43);
+  for (const x of [103, 152, 233]) {
+    rect(c, x, 74, 39, 23); px(c, x + 19, 75, 1, 21);
+    line(c, x + 3, 94, x + 16, 78);
+    px(c, x + 3, 90, 11, 1); px(c, x + 8, 91, 1, 5);
+  }
+  rect(c, 201, 71, 21, 38); px(c, 204, 75, 15, 20); px(c, 215, 98, 2, 2);
+  px(c, 260, 41, 6, 14);
+  // A swinging sign, not an electric neon sign in an abandoned building.
+  const sway = Math.round(Math.sin(t * 0.8));
+  line(c, 40, 66, 40, 107); line(c, 40, 66, 73, 66);
+  rect(c, 47 + sway, 72, 28, 18); plate(c, 'EAT', 53 + sway, 78);
+  parkedArrival(c, s, t, opt, 130, 121);
+  weatherFX(c, s.weather, t, opt && opt.reduce);
+};
+function restArea(c, s, t, opt, zombies) {
+  stopBackdrop(c, s);
+  c.fillStyle = PAPER; c.fillRect(169, 68, 121, 40);
+  rect(c, 169, 68, 121, 40);
+  line(c, 162, 68, 231, 46); line(c, 231, 46, 297, 68);
+  plate(c, 'REST AREA', 201, 74);
+  px(c, 182, 88, 17, 20); px(c, 254, 88, 17, 20);
+  // The loose washroom door opens a little in the wind, exposing the dark room.
+  const door = 5 + Math.round((Math.sin(t * 0.65) + 1) * 4);
+  c.fillStyle = PAPER; c.fillRect(183, 89, door, 18);
+  px(c, 183 + door, 88, 1, 20); px(c, 181 + door, 99, 1, 2);
+  rect(c, 217, 88, 15, 20); for (let y = 91; y < 104; y += 4) px(c, 220, y, 8, 2);
+  rect(c, 27, 65, 49, 30); plate(c, 'MAP', 44, 69);
+  line(c, 32, 87, 67, 77); line(c, 47, 77, 56, 91);
+  px(c, 33, 95, 2, 13); px(c, 69, 95, 2, 13);
+  px(c, 101, 97, 44, 3); line(c, 109, 100, 104, 109); line(c, 135, 100, 141, 109);
+  px(c, 99, 104, 48, 2);
+  windCloth(c, 74, 93, t, 13);
+  if (zombies) for (let i = 0; i < 9; i++) figure(c, 83 + i * 22 + Math.sin(t * 0.5 + i) * 3, 88 + i % 3 * 7, t + i, true);
+  parkedArrival(c, s, t, opt, 55, 123);
+  weatherFX(c, s.weather, t, opt && opt.reduce);
+}
+scenes.reststop = (c, s, t, opt) => restArea(c, s, t, opt, false);
+scenes.zrest = (c, s, t, opt) => restArea(c, s, t, opt, true);
+
+function campBuilding(c, s, t) {
+  const x = 222, y = 101, w = 78, h = 34;
+  const terrain = ZT.region(s).terrain;
+  const cabin = terrain === 'mountain' || terrain === 'hills' || terrain === 'river';
+  c.fillStyle = PAPER; c.fillRect(x - 3, y - h - 16, w + 6, h + 17);
+  // Cabin in wooded country; low roadside shelter on the plains and desert.
+  if (cabin) {
+    px(c, x + 53, y - h - 17, 6, 17);
+    smoke(c, x + 55, y - h - 20, t * 0.6, 27);
+    line(c, x - 4, y - h, x + w / 2, y - h - 14);
+    line(c, x + w / 2, y - h - 14, x + w + 4, y - h);
+  } else {
+    line(c, x - 4, y - h - 4, x + w + 4, y - h - 4);
+    line(c, x - 4, y - h - 4, x, y - h);
+    line(c, x + w + 4, y - h - 4, x + w, y - h);
+  }
+  rect(c, x, y - h, w, h);
+  for (let yy = y - h + 6; yy < y; yy += 6) line(c, x + 1, yy, x + w - 2, yy);
+  // Dark doorway and a lantern window; the shutter moves without blinking.
+  px(c, x + 12, y - 24, 14, 24);
+  c.fillStyle = PAPER; c.fillRect(x + 41, y - 26, 25, 18);
+  rect(c, x + 43, y - 24, 21, 14);
+  px(c, x + 53, y - 23, 1, 12); px(c, x + 44, y - 17, 19, 1);
+  const shutter = 3 + Math.round((Math.sin(t * 0.7) + 1) * 3);
+  grey(c, x + 43, y - 23, shutter, 12, 'g50');
+  px(c, x + 43 + shutter, y - 23, 1, 12);
+  // Porch tarp tied to two posts. The hem, rather than the whole roof, moves.
+  px(c, x - 6, y - 12, 2, 15); px(c, x + 33, y - 12, 2, 15);
+  line(c, x - 8, y - 15, x + 36, y - 15);
+  for (let dx = 0; dx < 43; dx++) {
+    const ripple = Math.round(Math.sin(t * 1.3 + dx * 0.22) * 1.5);
+    px(c, x - 7 + dx, y - 12 + ripple, 1, 1);
+  }
+}
+scenes.camp = function (c, s, t, opt) {
+  const hz = 107;
+  for (let i = 0; i < 40; i++) px(c, hash(i * 3.3) * W, hash(i * 7.7) * 52, 1, 1);
+  if (['mountain', 'hills'].includes(ZT.region(s).terrain)) mountains(c, 11, 81, 31);
+  trees(c, 51, hz, 1.2); ground(c, hz + 2, 0);
+  campBuilding(c, s, t);
+  if (s.vehicle.has) wagon(c, 20, hz - 6, 0, false);
+  // Canvas tent and a loose entrance flap moving in the breeze.
+  c.fillStyle = PAPER; c.fillRect(73, 112, 73, 37);
+  line(c, 76, 147, 102, 114); line(c, 102, 114, 139, 147); line(c, 76, 147, 139, 147);
+  const flap = Math.round(Math.sin(t * 1.2) * 3);
+  line(c, 102, 114, 102 + flap, 147);
+  grey(c, 104 + flap, 134, 12, 12, 'g25');
+  line(c, 102, 114, 118 + flap, 147);
+  line(c, 76, 147, 69, 151); line(c, 139, 147, 146, 151);
+  windCloth(c, 103, 115, t, 12);
+  // A low cooking fire, kettle, and one seated figure per living traveler.
+  for (let i = 0; i < 18; i++) {
+    const p = (t * 17 + i * 5) % 20;
+    px(c, 160 + Math.sin(i * 2 + t * 2) * (2 + p * 0.16), 114 - p, 2, 2);
+  }
+  line(c, 151, 116, 170, 113); line(c, 152, 113, 169, 116);
+  const seats = [[127, 94], [186, 100], [181, 125], [214, 120], [251, 117]];
+  for (let i = 0; i < ZT.State.aliveCount(s); i++) {
+    const [x, y] = seats[i];
+    figure(c, x, y, 0, false);
+    // Only the cup/hand shifts; seated survivors do not walk in place.
+    const lift = Math.round(Math.max(0, Math.sin(t * 0.65 + i)) * 2);
+    line(c, x + 5, y + 7, x + 9, y + 7 - lift);
+    rect(c, x + 8, y + 5 - lift, 3, 3);
+  }
+  rect(c, 205, 136, 34, 9); px(c, 208, 137, 1, 7);
+  line(c, 149, 117, 161, 89); line(c, 161, 89, 174, 117);
+  const kettle = Math.round(Math.sin(t * 0.8));
+  line(c, 161, 89, 161 + kettle, 99);
+  px(c, 157 + kettle, 101, 9, 6); circle(c, 161 + kettle, 101, 4);
+  smoke(c, 160 + kettle, 95, t * 0.7, 32);
+  weatherFX(c, s.weather, t, opt && opt.reduce);
+};
+const originalHood = scenes.hood;
+scenes.hood = function (c, s, t, opt) {
+  originalHood(c, s, t, opt);
+  rect(c, 182, 113, 22, 12); rect(c, 188, 109, 10, 4);
+  px(c, 191, 115, 3, 3);
+  figure(c, 170, 94, 0, false);
+  const y = 101 + Math.round(Math.sin(t * 3) * 2);
+  line(c, 170, 99, 161, y); px(c, 159, y - 2, 2, 5); px(c, 157, y - 2, 2, 1);
+};
 
 /* ---------- the map ----------
    Real coordinates, equirectangular with a cosine correction at 41.5N. */
@@ -6501,6 +6763,8 @@ return {
   setScanlines(v) { scanlines = v; },
   draw(canvas, key, s, t, opt) {
     ensure();
+    opt = Object.assign({}, opt);
+    if (opt.motion === false) { t = 0; opt.dist = 0; opt.elapsed = 4; opt.reduce = true; }
     const c = bctx;
     clear(c);
     const fn = scenes[key] || scenes.road;
@@ -6513,7 +6777,7 @@ return {
     dst.drawImage(buf, 0, 0, canvas.width, canvas.height);
   },
   /* the scavenge minigame draws its own world */
-  drawScavenge(canvas, g, t) {
+  drawScavenge(canvas, g, t, opt) {
     ensure();
     const c = bctx;
     clear(c);
@@ -6547,7 +6811,7 @@ return {
     // zombies
     for (const z of g.zombies) figure(c, z.x * T - 2, z.y * T - 6, t * 3 + z.x, true);
     // player
-    const p = g.hurt > 0 && Math.sin(t * 30) > 0;
+    const p = !(opt && opt.reduce) && g.hurt > 0 && Math.sin(t * 30) > 0;
     if (!p) figure(c, g.px * T - 2, g.py * T - 6, g.steps * 8, false);
     // the thumbstick, drawn where the finger actually is
     if (g.stick) {
@@ -6560,8 +6824,8 @@ return {
     }
     c.restore();
     // the HUD lives in the DOM, where it is readable and can be announced
-    if (g.flash > 0) { grey(c, 0, 0, W, H, 'g50'); }
-    vignetteScanlines(c, scanlines);
+    if (g.flash > 0 && !(opt && opt.reduce)) { grey(c, 0, 0, W, H, 'g50'); }
+    vignetteScanlines(c, scanlines && !(opt && opt.reduce));
     const dst = canvas.getContext('2d');
     dst.imageSmoothingEnabled = false;
     dst.fillStyle = PAPER; dst.fillRect(0, 0, canvas.width, canvas.height);
@@ -6759,7 +7023,7 @@ ZT.Atlas = {
 };
 
 /* ===== 85_save_audio.js ===== */
-/* ZOMBIE TRAILS — save slots, settings, memorials, audio */
+/* ZOMBIE TRAILS — save slots, settings, memorials */
 'use strict';
 ZT.Save = (function () {
 const KEY = 'zombietrails.v1';
@@ -6813,51 +7077,161 @@ return {
 };
 })();
 
-/* ---------- primitive square-wave audio ---------- */
+/* ===== 86_audio.js ===== */
+/* ZOMBIE TRAILS — offline sound cabinet. No downloads or game RNG use.
+   Voices use the audio clock; muting cancels even notes scheduled in the future. */
+'use strict';
 ZT.Audio = (function () {
-let ctx = null, on = false;
+let ctx = null, master = null, noiseBuffer = null;
+let on = false, unlocked = false, visible = true, ambience = true, volume = 0.5;
+let scene = { key: '', weather: 'clear', moving: false }, timer = null, beat = 0;
+const voices = new Set();
 function ac() {
-  if (!ctx) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ctx = new A(); }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-  return ctx;
-}
-function beep(freq, dur, type, vol) {
-  if (!on) return;
-  const c = ac(); if (!c) return;
+  if (!on || !unlocked || !visible) return null;
   try {
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = type || 'square';
-    o.frequency.setValueAtTime(freq, c.currentTime);
-    g.gain.setValueAtTime(0.0001, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(vol == null ? 0.055 : vol, c.currentTime + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
-    o.connect(g); g.connect(c.destination);
-    o.start(); o.stop(c.currentTime + dur + 0.02);
+    if (!ctx) {
+      const A = window.AudioContext || window.webkitAudioContext;
+      if (!A) return null;
+      ctx = new A(); master = ctx.createGain();
+      master.gain.value = volume; master.connect(ctx.destination);
+    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  } catch (e) { return null; } // Audio failure must never prevent a choice.
+}
+function track(source, nodes, ambient) {
+  const voice = { source, nodes, ambient };
+  voices.add(voice);
+  source.onended = () => {
+    voices.delete(voice);
+    nodes.forEach(n => { try { n.disconnect(); } catch (e) {} });
+  };
+}
+function stopVoices(ambientOnly) {
+  for (const v of [...voices]) {
+    if (ambientOnly && !v.ambient) continue;
+    try { v.source.stop(); } catch (e) {}
+    v.nodes.forEach(n => { try { n.disconnect(); } catch (e) {} });
+    voices.delete(v);
+  }
+}
+function envelope(g, start, dur, vol) {
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0001, vol), start + Math.min(0.02, dur / 3));
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+}
+function tone(freq, dur, type = 'square', vol = 0.05, delay = 0, end = freq, ambient = false) {
+  const c = ac(); if (!c || (ambient && !ambience)) return;
+  try {
+    const o = c.createOscillator(), g = c.createGain(), start = c.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(freq, start);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, end), start + dur);
+    envelope(g, start, dur, vol); o.connect(g); g.connect(master);
+    track(o, [o, g], ambient); o.start(start); o.stop(start + dur + 0.02);
   } catch (e) {}
 }
-function seq(notes) {
-  if (!on) return;
-  const c = ac(); if (!c) return;
-  let t = 0;
-  for (const [f, d] of notes) { setTimeout(() => beep(f, d), t * 1000); t += d * 0.85; }
+function hiss(dur, vol, cutoff = 900, delay = 0, ambient = false) {
+  const c = ac(); if (!c || (ambient && !ambience)) return;
+  try {
+    if (!noiseBuffer) {
+      noiseBuffer = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+      const data = noiseBuffer.getChannelData(0); let seed = 1979;
+      for (let i = 0; i < data.length; i++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        data[i] = seed / 2147483648 - 1;
+      }
+    }
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    const start = c.currentTime + delay;
+    n.buffer = noiseBuffer; n.loop = true; f.type = 'lowpass'; f.frequency.value = cutoff;
+    envelope(g, start, dur, vol); n.connect(f); f.connect(g); g.connect(master);
+    track(n, [n, f, g], ambient); n.start(start); n.stop(start + dur + 0.02);
+  } catch (e) {}
 }
-return {
-  setOn(v) { on = !!v; if (on) ac(); },
+function seq(notes, type = 'square', vol = 0.05) {
+  let delay = 0;
+  for (const [f, d] of notes) { tone(f, d, type, vol, delay); delay += d * 0.9; }
+}
+function pulse() {
+  if (!on || !visible || !ambience || !ac()) return;
+  beat++;
+  if (scene.moving) {
+    tone(65, 1.1, 'triangle', 0.026, 0, 70, true);
+    hiss(1.1, 0.019, 440, 0, true);
+  }
+  if (scene.weather === 'rain' || scene.weather === 'storm') {
+    hiss(1.15, 0.045, 2600, 0, true);
+    if (scene.weather === 'storm' && beat % 7 === 0) hiss(1.4, 0.10, 140, 0, true);
+  } else if (['snow', 'cold', 'wind', 'dust'].includes(scene.weather)) {
+    hiss(1.15, 0.038, 480, 0, true);
+  }
+  if (['camp', 'fire'].includes(scene.key)) {
+    hiss(0.95, 0.028, 1200, 0, true);
+    hiss(0.035, 0.07, 2400, 0.25, true);
+    hiss(0.025, 0.04, 1800, 0.72, true);
+  } else if (/^z|horde|bandits/.test(scene.key) && beat % 4 === 1) {
+    tone(94, 0.9, 'sawtooth', 0.017, 0, 49, true);
+    tone(71, 1.1, 'triangle', 0.022, 0.2, 43, true);
+  } else if (scene.key === 'radio') {
+    hiss(0.6, 0.027, 3200, 0, true);
+    if (beat % 3 === 0) tone(780, 0.05, 'sine', 0.022, 0.3, 780, true);
+  }
+}
+function stopBed() { if (timer !== null) clearInterval(timer); timer = null; stopVoices(true); }
+function startBed() {
+  stopBed();
+  if (!scene.key || !on || !ambience || !visible || !ac()) return;
+  beat = 0; pulse(); timer = setInterval(pulse, 1100);
+}
+const api = {
+  unlock() { unlocked = true; ac(); startBed(); },
+  setOn(v) {
+    on = !!v;
+    if (on) { ac(); startBed(); }
+    else { stopBed(); stopVoices(false); }
+  },
   isOn() { return on; },
-  move() { beep(420, 0.03, 'square', 0.03); },
-  select() { beep(660, 0.05); },
-  back() { beep(300, 0.05); },
+  setVolume(v) {
+    volume = Number.isFinite(Number(v)) ? Math.max(0, Math.min(1, Number(v))) : 0.5;
+    if (master) master.gain.setValueAtTime(volume, ctx.currentTime);
+  },
+  setAmbience(v) { ambience = !!v; startBed(); },
+  setVisible(v) {
+    visible = !!v;
+    if (visible) startBed(); else { stopBed(); stopVoices(false); }
+  },
+  setScene(next) {
+    next = Object.assign({ key: '', weather: 'clear', moving: false }, next);
+    if (next.key === scene.key && next.weather === scene.weather && next.moving === scene.moving) return;
+    scene = next; startBed();
+  },
+  move() { tone(420, 0.03, 'square', 0.025); },
+  select() { tone(660, 0.05); },
+  back() { tone(300, 0.05); },
   warn() { seq([[300, 0.09], [240, 0.13]]); },
   bad() { seq([[220, 0.1], [180, 0.12], [140, 0.2]]); },
   good() { seq([[520, 0.07], [660, 0.07], [880, 0.12]]); },
-  find() { seq([[700, 0.05], [900, 0.08]]); },
-  death() { seq([[300, 0.18], [240, 0.2], [190, 0.24], [140, 0.5]]); },
-  landmark() { seq([[440, 0.1], [550, 0.1], [660, 0.18]]); },
-  breakdown() { seq([[180, 0.12], [150, 0.16], [120, 0.3]]); },
-  shot() { beep(120, 0.06, 'sawtooth', 0.06); },
-  win() { seq([[440, 0.12], [554, 0.12], [659, 0.12], [880, 0.36]]); },
-  engine() { beep(90, 0.12, 'sawtooth', 0.02); },
+  find() { hiss(0.06, 0.035, 2200); seq([[700, 0.05], [900, 0.12]]); },
+  death() { seq([[300, 0.18], [240, 0.2], [190, 0.24], [140, 0.5]], 'triangle'); },
+  landmark() { seq([[440, 0.1], [550, 0.1], [660, 0.22]], 'triangle', 0.09); },
+  breakdown() { tone(120, 0.5, 'sawtooth', 0.045, 0, 30); hiss(0.3, 0.08, 700, 0.15); },
+  shot() { hiss(0.16, 0.13, 2100); tone(115, 0.13, 'triangle', 0.08, 0, 30); },
+  win() { seq([[440, 0.12], [554, 0.12], [659, 0.12], [880, 0.36]], 'triangle', 0.1); },
+  engine() { tone(36, 0.55, 'sawtooth', 0.04, 0, 100); hiss(0.25, 0.045, 420); },
+  stop() { tone(100, 0.7, 'triangle', 0.05, 0, 28); hiss(0.4, 0.05, 1100); },
+  repair() { [0, 0.17, 0.34].forEach(d => { hiss(0.05, 0.08, 3000, d); tone(720, 0.045, 'square', 0.03, d, 420); }); },
+  heal() { seq([[392, 0.10], [523, 0.13], [659, 0.18]], 'sine', 0.09); },
+  fuel() { [0, 0.1, 0.2, 0.3].forEach(d => tone(190, 0.08, 'sine', 0.055, d, 100)); },
+  trade() { seq([[1046, 0.07], [1318, 0.16]], 'triangle', 0.08); },
+  encounter(art, cat, vehicle) {
+    if (['station', 'diner', 'reststop', 'zrest'].includes(art) && vehicle) api.stop();
+    else if (cat === 'zombie') { tone(120, 0.7, 'sawtooth', 0.035, 0, 48); }
+    else if (cat === 'vehicle') api.breakdown();
+    else if (art === 'radio') hiss(0.5, 0.05, 3000);
+    else api.warn();
+  },
 };
+return api;
 })();
 
 /* ===== 90_ui.js ===== */
@@ -6868,8 +7242,10 @@ let S = null;                 // game state
 let screen = 'title';
 let ctxData = {};             // per-screen scratch
 let raf = null, last = 0, tAnim = 0;
+let sceneStarted = 0;
+const motionQuery = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: false, daily: true, theme: 'light' }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, volume: 0.5, ambience: true, motion: true, flash: true, scale: 1, arcade: false, daily: true, theme: 'light' }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -6941,12 +7317,21 @@ function bindMenu(root, items, onPick) {
 }
 
 function render(html, alt) {
+  sceneStarted = tAnim;
   if (screen !== 'travelling') travelling = null;
   const root = $('screen');
   root.innerHTML = html;
   const cv = $('scene');
   if (cv) fitCanvas(cv);
+  syncSound(!!cv);
   return root;
+}
+function syncSound(hasScene) {
+  ZT.Audio.setScene({ key: hasScene ? ctxData.art || '' : '', weather: hasScene && S ? S.weather : 'clear', moving: screen === 'travelling' && !!S && S.vehicle.has });
+}
+function sceneOptions(extra) {
+  const motion = settings.motion && !(motionQuery && motionQuery.matches);
+  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', sel: ctxData.sel }, extra);
 }
 
 /* The scene is a band, not the page. Pick the largest whole-pixel scale that fits
@@ -6968,12 +7353,16 @@ function fitCanvas(cv) {
 /* ---------------- loop ---------------- */
 function loop(ts) {
   raf = requestAnimationFrame(loop);
+  if (document.hidden) { last = ts; return; }
   const dt = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts; tAnim += dt;
   const cv = $('scene');
   if (screen === 'scavenge' && scav) {
+    const carried = scav.carry.length, hurt = scav.hurt;
     ZT.Scavenge.step(scav, dt, input);
-    if (cv) ZT.R.drawScavenge(cv, scav, tAnim);
+    if (scav.carry.length > carried) ZT.Audio.find();
+    if (scav.hurt > hurt) ZT.Audio.bad();
+    if (cv) ZT.R.drawScavenge(cv, scav, tAnim, sceneOptions());
     updateScavHud(scav);
     if (scav.over) { const o = scav.over; scav = null; finishScavenge(o); }
     return;
@@ -6981,11 +7370,11 @@ function loop(ts) {
   if (travelling && screen === 'travelling') {
     travelling.t += dt;
     travelling.dist += dt * (travelling.speed || 34);
-    if (cv) ZT.R.draw(cv, 'travel', S, tAnim, { dist: travelling.dist, reduce: !settings.flash });
+    if (cv) ZT.R.draw(cv, 'travel', S, tAnim, sceneOptions({ dist: travelling.dist }));
     if (travelling.t >= travelling.dur) stepTravel();
     return;
   }
-  if (cv && ctxData.art) ZT.R.draw(cv, ctxData.art, S || fakeState(), tAnim, { dist: tAnim * 30, reduce: !settings.flash, sel: ctxData.sel });
+  if (cv && ctxData.art) ZT.R.draw(cv, ctxData.art, S || fakeState(), tAnim, sceneOptions({ dist: tAnim * 30 }));
 }
 function fakeState() { return { weather: 'clear', miles: 0, vehicle: { has: true }, party: [], pace: 'steady', at: ZT.START_NODE, legTo: null, legMiles: 0, path: [ZT.START_NODE], seen: {} }; }
 
@@ -6998,7 +7387,7 @@ let audioUnlocked = false;
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  if (settings.sound) ZT.Audio.setOn(true);
+  ZT.Audio.unlock();
 }
 function onKey(e) {
   const k = e.key.toLowerCase();
@@ -7029,7 +7418,7 @@ function goTitle() {
     { label: 'Continue', hint: hasSave ? saveBlurb() : 'no saved game', disabled: !hasSave },
     { label: 'How to survive', hint: 'instructions' },
     { label: 'The road behind', hint: 'memorials and scores' },
-    { label: 'Settings', hint: 'sound, flashing, minigame' },
+    { label: 'Settings', hint: 'sound, volume, motion, minigame' },
   ];
   const root = render(`
     <div class="title-wrap">
@@ -7121,30 +7510,52 @@ function goInstructions() {
 function goSettings() {
   screen = 'settings'; ctxData = { art: 'road' };
   const items = [
-    { label: `Sound: ${settings.sound ? 'ON' : 'OFF'}`, hint: 'primitive beeps' },
+    { label: `Sound: ${settings.sound ? 'ON' : 'OFF'}`, hint: 'retro effects and roadside atmosphere' },
     { label: `Flashing and scanlines: ${settings.flash ? 'ON' : 'REDUCED'}`, hint: 'reduce for comfort' },
     { label: `Scavenging: ${settings.arcade ? 'MINIGAME' : 'MENU ONLY'}`, hint: 'menu mode needs no timed input' },
     { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE'][settings.scale]}`, hint: '' },
     { label: 'Erase saved game and records', hint: 'cannot be undone' },
     { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
     { label: `Display: ${settings.theme === 'dark' ? 'DARK' : 'LIGHT'}`, hint: 'monochrome in both modes' },
+    { label: `Volume: ${Math.round(settings.volume * 100)}%`, hint: 'cycles 0 / 25 / 50 / 75 / 100', key: 'V' },
+    { label: `Ambient sound: ${settings.ambience ? 'ON' : 'OFF'}`, hint: 'engine, weather, campfire, and distant dead', key: 'A' },
+    { label: `Motion: ${!settings.motion || (motionQuery && motionQuery.matches) ? 'REDUCED' : 'ON'}`, hint: motionQuery && motionQuery.matches ? 'reduced by your device preference' : 'still pictures; choices stay untimed', key: 'M' },
+    { label: 'Test sound', hint: 'plays a short supply chime', key: 'T', disabled: !settings.sound || settings.volume === 0 },
     { label: 'Back', key: 'Esc' },
   ];
   const root = render(`<div class="doc"><h1>SETTINGS</h1>${menuHTML(items)}</div>`);
   bindMenu(root, items, (i) => {
-    if (i === 0) { settings.sound = !settings.sound; ZT.Audio.setOn(settings.sound); }
+    if (i === 0) { toggleSound(false); }
     else if (i === 1) { settings.flash = !settings.flash; ZT.R.setScanlines(settings.flash); applyFlash(); }
     else if (i === 2) settings.arcade = !settings.arcade;
     else if (i === 3) { settings.scale = (settings.scale + 1) % 3; applyScale(); }
     else if (i === 4) { if (confirm('Erase the saved game, memorials and scores?')) { ZT.Save.clear(1); ZT.Save.saveSettings(Object.assign({}, settings, { memorials: null })); try { localStorage.removeItem('zombietrails.v1.memorials'); localStorage.removeItem('zombietrails.v1.scores'); } catch (e) {} } }
     else if (i === 5) settings.daily = !settings.daily;
     else if (i === 6) { toggleTheme(); return; }
+    else if (i === 7) { settings.volume = (Math.round(settings.volume * 4) + 1) % 5 / 4; ZT.Audio.setVolume(settings.volume); }
+    else if (i === 8) { settings.ambience = !settings.ambience; ZT.Audio.setAmbience(settings.ambience); }
+    else if (i === 9) settings.motion = !settings.motion;
+    else if (i === 10) { ZT.Audio.good(); return; }
     else { saveSettings(); if (S) goTravel(); else goTitle(); return; }
     saveSettings(); goSettings();
   });
   keyMap['escape'] = () => { saveSettings(); if (S) goTravel(); else goTitle(); };
 }
 function saveSettings() { ZT.Save.saveSettings(settings); }
+function updateSoundButton() {
+  const b = $('sound-toggle');
+  if (!b) return;
+  b.textContent = 'Sound: ' + (settings.sound ? 'on' : 'off');
+  b.setAttribute('aria-pressed', String(settings.sound));
+  b.setAttribute('aria-label', settings.sound ? 'Mute sound' : 'Enable sound');
+}
+function toggleSound(redraw = true) {
+  settings.sound = !settings.sound;
+  ZT.Audio.unlock(); ZT.Audio.setOn(settings.sound);
+  updateSoundButton(); saveSettings();
+  if (settings.sound) ZT.Audio.select();
+  if (redraw && screen === 'settings') goSettings();
+}
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
 function applyFlash() { const tube = document.getElementById('tube'); if (tube) tube.classList.toggle('reduced', !settings.flash); }
 function applyTheme() {
@@ -7314,6 +7725,7 @@ function drawShop() {
       ZT.State.log(S, `Left Omaha with ${Math.round(cart.food)} lbs of food and ${cart.fuel} gallons.`, true);
       ZT.Travel.takeLeg(S, 'kearney');
       ZT.Save.save(S);
+      ZT.Audio.trade();
       goTravel();
     } else if (i === 1) {
       showModal('THE QUARTERMASTER', quartermasterAdvice(), [{ label: 'Back to the counter' }], () => drawShop(), 'market');
@@ -7462,6 +7874,7 @@ function travelFlavor() {
 function stepTravel() {
   const before = { day: S.day, miles: S.miles, food: S.inv.food, fuel: S.inv.fuel };
   const r = ZT.Travel.step(S);
+  syncSound(true);
   const tick = $('ticker');
   if (tick) tick.textContent = travelFlavor() + ` Day ${S.day}, mile ${Math.round(S.miles)}.`;
   if (!r) {
@@ -7510,7 +7923,7 @@ function showTravelDay(before) {
 /* ---------------- event modal ---------------- */
 function goEvent(inst) {
   screen = 'event'; ctxData.art = inst.art || 'road';
-  ZT.Audio.warn();
+  ZT.Audio.encounter(ctxData.art, inst.cat, S.vehicle.has);
   const items = inst.choices.map((ch) => ({ label: ch.text, hint: ch.hint }));
   const root = render(`
     ${statusLine()}
@@ -7520,7 +7933,9 @@ function goEvent(inst) {
       ${menuHTML(items)}
     </div>`);
   bindMenu(root, items, (i) => {
+    const shots = S.stats.shots;
     const out = ZT.Events.resolve(S, inst, inst.choices[i].i);
+    if (S.stats.shots > shots) ZT.Audio.shot();
     showOutcome(inst, out);
   });
 }
@@ -7543,7 +7958,8 @@ function showOutcome(inst, out) {
   });
   if (out.deaths && out.deaths.length) ZT.Audio.death();
   else if (deltas.some((d) => /BITTEN|DIED|FAILED|MISSING/.test(d))) ZT.Audio.bad();
-  else if (deltas.some((d) => d.startsWith('+'))) ZT.Audio.find();
+  else if (deltas.some((d) => /^\+.*fuel/i.test(d))) ZT.Audio.fuel();
+  else if (deltas.some((d) => /^\+.*(food|medicine|ammunition|parts|goods)/i.test(d))) ZT.Audio.find();
 }
 function afterEvent() {
   if (S.over) return goEnd();
@@ -7960,6 +8376,7 @@ function goTreat() {
     if (!items[i].m) return goTravel();
     const c = { d: [] };
     const text = ZT.Party.treat(S, items[i].m);
+    ZT.Audio.heal();
     ZT.Save.save(S);
     showModal('TREATMENT', esc(text), [{ label: 'Continue' }], () => goTravel(), 'sick');
   });
@@ -8002,6 +8419,7 @@ function goRepair() {
       ZT.X.loseVehicle(S, c, 'abandoned at the roadside');
       text = 'Everything that can be carried comes out of the wagon and the rest stays in it. The doors are left open, which somebody says is stupid, and nobody argues.';
     }
+    if (act !== 'abandon') ZT.Audio.repair();
     ZT.Save.save(S);
     const deaths = []; while (S.pendingDeaths.length) deaths.push(S.party[S.pendingDeaths.shift()]);
     showOutcome({ art: 'hood', text: '', choices: [] }, { text, deltas: c.d, next: null, deaths });
@@ -8223,13 +8641,21 @@ function start() {
   applyTheme();
   const themeButton = $('theme-toggle');
   if (themeButton) themeButton.addEventListener('click', toggleTheme);
+  const soundButton = $('sound-toggle');
+  if (soundButton) soundButton.addEventListener('click', () => toggleSound());
+  updateSoundButton();
   applyScale();
   applyFlash();
+  ZT.Audio.setVolume(settings.volume);
+  ZT.Audio.setAmbience(settings.ambience);
+  ZT.Audio.setVisible(!document.hidden);
   ZT.Audio.setOn(settings.sound);
   ZT.R.setScanlines(settings.flash);
+  document.addEventListener('keydown', unlockAudio, { once: true, capture: true });
   document.addEventListener('keydown', onKey);
   document.addEventListener('keyup', onKey);
   document.addEventListener('pointerdown', unlockAudio, { once: true });
+  document.addEventListener('visibilitychange', () => { ZT.Audio.setVisible(!document.hidden); last = performance.now(); });
   if (STANDALONE) document.documentElement.classList.add('installed');
   const refit = () => { const cv = $('scene'); if (cv) fitCanvas(cv); };
   window.addEventListener('resize', refit);

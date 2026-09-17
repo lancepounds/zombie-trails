@@ -5,8 +5,10 @@ let S = null;                 // game state
 let screen = 'title';
 let ctxData = {};             // per-screen scratch
 let raf = null, last = 0, tAnim = 0;
+let sceneStarted = 0;
+const motionQuery = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, flash: true, scale: 1, arcade: false, daily: true, theme: 'light' }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, volume: 0.5, ambience: true, motion: true, flash: true, scale: 1, arcade: false, daily: true, theme: 'light' }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -78,12 +80,21 @@ function bindMenu(root, items, onPick) {
 }
 
 function render(html, alt) {
+  sceneStarted = tAnim;
   if (screen !== 'travelling') travelling = null;
   const root = $('screen');
   root.innerHTML = html;
   const cv = $('scene');
   if (cv) fitCanvas(cv);
+  syncSound(!!cv);
   return root;
+}
+function syncSound(hasScene) {
+  ZT.Audio.setScene({ key: hasScene ? ctxData.art || '' : '', weather: hasScene && S ? S.weather : 'clear', moving: screen === 'travelling' && !!S && S.vehicle.has });
+}
+function sceneOptions(extra) {
+  const motion = settings.motion && !(motionQuery && motionQuery.matches);
+  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', sel: ctxData.sel }, extra);
 }
 
 /* The scene is a band, not the page. Pick the largest whole-pixel scale that fits
@@ -105,12 +116,16 @@ function fitCanvas(cv) {
 /* ---------------- loop ---------------- */
 function loop(ts) {
   raf = requestAnimationFrame(loop);
+  if (document.hidden) { last = ts; return; }
   const dt = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts; tAnim += dt;
   const cv = $('scene');
   if (screen === 'scavenge' && scav) {
+    const carried = scav.carry.length, hurt = scav.hurt;
     ZT.Scavenge.step(scav, dt, input);
-    if (cv) ZT.R.drawScavenge(cv, scav, tAnim);
+    if (scav.carry.length > carried) ZT.Audio.find();
+    if (scav.hurt > hurt) ZT.Audio.bad();
+    if (cv) ZT.R.drawScavenge(cv, scav, tAnim, sceneOptions());
     updateScavHud(scav);
     if (scav.over) { const o = scav.over; scav = null; finishScavenge(o); }
     return;
@@ -118,11 +133,11 @@ function loop(ts) {
   if (travelling && screen === 'travelling') {
     travelling.t += dt;
     travelling.dist += dt * (travelling.speed || 34);
-    if (cv) ZT.R.draw(cv, 'travel', S, tAnim, { dist: travelling.dist, reduce: !settings.flash });
+    if (cv) ZT.R.draw(cv, 'travel', S, tAnim, sceneOptions({ dist: travelling.dist }));
     if (travelling.t >= travelling.dur) stepTravel();
     return;
   }
-  if (cv && ctxData.art) ZT.R.draw(cv, ctxData.art, S || fakeState(), tAnim, { dist: tAnim * 30, reduce: !settings.flash, sel: ctxData.sel });
+  if (cv && ctxData.art) ZT.R.draw(cv, ctxData.art, S || fakeState(), tAnim, sceneOptions({ dist: tAnim * 30 }));
 }
 function fakeState() { return { weather: 'clear', miles: 0, vehicle: { has: true }, party: [], pace: 'steady', at: ZT.START_NODE, legTo: null, legMiles: 0, path: [ZT.START_NODE], seen: {} }; }
 
@@ -135,7 +150,7 @@ let audioUnlocked = false;
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  if (settings.sound) ZT.Audio.setOn(true);
+  ZT.Audio.unlock();
 }
 function onKey(e) {
   const k = e.key.toLowerCase();
@@ -166,7 +181,7 @@ function goTitle() {
     { label: 'Continue', hint: hasSave ? saveBlurb() : 'no saved game', disabled: !hasSave },
     { label: 'How to survive', hint: 'instructions' },
     { label: 'The road behind', hint: 'memorials and scores' },
-    { label: 'Settings', hint: 'sound, flashing, minigame' },
+    { label: 'Settings', hint: 'sound, volume, motion, minigame' },
   ];
   const root = render(`
     <div class="title-wrap">
@@ -258,30 +273,52 @@ function goInstructions() {
 function goSettings() {
   screen = 'settings'; ctxData = { art: 'road' };
   const items = [
-    { label: `Sound: ${settings.sound ? 'ON' : 'OFF'}`, hint: 'primitive beeps' },
+    { label: `Sound: ${settings.sound ? 'ON' : 'OFF'}`, hint: 'retro effects and roadside atmosphere' },
     { label: `Flashing and scanlines: ${settings.flash ? 'ON' : 'REDUCED'}`, hint: 'reduce for comfort' },
     { label: `Scavenging: ${settings.arcade ? 'MINIGAME' : 'MENU ONLY'}`, hint: 'menu mode needs no timed input' },
     { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE'][settings.scale]}`, hint: '' },
     { label: 'Erase saved game and records', hint: 'cannot be undone' },
     { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
     { label: `Display: ${settings.theme === 'dark' ? 'DARK' : 'LIGHT'}`, hint: 'monochrome in both modes' },
+    { label: `Volume: ${Math.round(settings.volume * 100)}%`, hint: 'cycles 0 / 25 / 50 / 75 / 100', key: 'V' },
+    { label: `Ambient sound: ${settings.ambience ? 'ON' : 'OFF'}`, hint: 'engine, weather, campfire, and distant dead', key: 'A' },
+    { label: `Motion: ${!settings.motion || (motionQuery && motionQuery.matches) ? 'REDUCED' : 'ON'}`, hint: motionQuery && motionQuery.matches ? 'reduced by your device preference' : 'still pictures; choices stay untimed', key: 'M' },
+    { label: 'Test sound', hint: 'plays a short supply chime', key: 'T', disabled: !settings.sound || settings.volume === 0 },
     { label: 'Back', key: 'Esc' },
   ];
   const root = render(`<div class="doc"><h1>SETTINGS</h1>${menuHTML(items)}</div>`);
   bindMenu(root, items, (i) => {
-    if (i === 0) { settings.sound = !settings.sound; ZT.Audio.setOn(settings.sound); }
+    if (i === 0) { toggleSound(false); }
     else if (i === 1) { settings.flash = !settings.flash; ZT.R.setScanlines(settings.flash); applyFlash(); }
     else if (i === 2) settings.arcade = !settings.arcade;
     else if (i === 3) { settings.scale = (settings.scale + 1) % 3; applyScale(); }
     else if (i === 4) { if (confirm('Erase the saved game, memorials and scores?')) { ZT.Save.clear(1); ZT.Save.saveSettings(Object.assign({}, settings, { memorials: null })); try { localStorage.removeItem('zombietrails.v1.memorials'); localStorage.removeItem('zombietrails.v1.scores'); } catch (e) {} } }
     else if (i === 5) settings.daily = !settings.daily;
     else if (i === 6) { toggleTheme(); return; }
+    else if (i === 7) { settings.volume = (Math.round(settings.volume * 4) + 1) % 5 / 4; ZT.Audio.setVolume(settings.volume); }
+    else if (i === 8) { settings.ambience = !settings.ambience; ZT.Audio.setAmbience(settings.ambience); }
+    else if (i === 9) settings.motion = !settings.motion;
+    else if (i === 10) { ZT.Audio.good(); return; }
     else { saveSettings(); if (S) goTravel(); else goTitle(); return; }
     saveSettings(); goSettings();
   });
   keyMap['escape'] = () => { saveSettings(); if (S) goTravel(); else goTitle(); };
 }
 function saveSettings() { ZT.Save.saveSettings(settings); }
+function updateSoundButton() {
+  const b = $('sound-toggle');
+  if (!b) return;
+  b.textContent = 'Sound: ' + (settings.sound ? 'on' : 'off');
+  b.setAttribute('aria-pressed', String(settings.sound));
+  b.setAttribute('aria-label', settings.sound ? 'Mute sound' : 'Enable sound');
+}
+function toggleSound(redraw = true) {
+  settings.sound = !settings.sound;
+  ZT.Audio.unlock(); ZT.Audio.setOn(settings.sound);
+  updateSoundButton(); saveSettings();
+  if (settings.sound) ZT.Audio.select();
+  if (redraw && screen === 'settings') goSettings();
+}
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
 function applyFlash() { const tube = document.getElementById('tube'); if (tube) tube.classList.toggle('reduced', !settings.flash); }
 function applyTheme() {
@@ -451,6 +488,7 @@ function drawShop() {
       ZT.State.log(S, `Left Omaha with ${Math.round(cart.food)} lbs of food and ${cart.fuel} gallons.`, true);
       ZT.Travel.takeLeg(S, 'kearney');
       ZT.Save.save(S);
+      ZT.Audio.trade();
       goTravel();
     } else if (i === 1) {
       showModal('THE QUARTERMASTER', quartermasterAdvice(), [{ label: 'Back to the counter' }], () => drawShop(), 'market');
@@ -599,6 +637,7 @@ function travelFlavor() {
 function stepTravel() {
   const before = { day: S.day, miles: S.miles, food: S.inv.food, fuel: S.inv.fuel };
   const r = ZT.Travel.step(S);
+  syncSound(true);
   const tick = $('ticker');
   if (tick) tick.textContent = travelFlavor() + ` Day ${S.day}, mile ${Math.round(S.miles)}.`;
   if (!r) {
@@ -647,7 +686,7 @@ function showTravelDay(before) {
 /* ---------------- event modal ---------------- */
 function goEvent(inst) {
   screen = 'event'; ctxData.art = inst.art || 'road';
-  ZT.Audio.warn();
+  ZT.Audio.encounter(ctxData.art, inst.cat, S.vehicle.has);
   const items = inst.choices.map((ch) => ({ label: ch.text, hint: ch.hint }));
   const root = render(`
     ${statusLine()}
@@ -657,7 +696,9 @@ function goEvent(inst) {
       ${menuHTML(items)}
     </div>`);
   bindMenu(root, items, (i) => {
+    const shots = S.stats.shots;
     const out = ZT.Events.resolve(S, inst, inst.choices[i].i);
+    if (S.stats.shots > shots) ZT.Audio.shot();
     showOutcome(inst, out);
   });
 }
@@ -680,7 +721,8 @@ function showOutcome(inst, out) {
   });
   if (out.deaths && out.deaths.length) ZT.Audio.death();
   else if (deltas.some((d) => /BITTEN|DIED|FAILED|MISSING/.test(d))) ZT.Audio.bad();
-  else if (deltas.some((d) => d.startsWith('+'))) ZT.Audio.find();
+  else if (deltas.some((d) => /^\+.*fuel/i.test(d))) ZT.Audio.fuel();
+  else if (deltas.some((d) => /^\+.*(food|medicine|ammunition|parts|goods)/i.test(d))) ZT.Audio.find();
 }
 function afterEvent() {
   if (S.over) return goEnd();
@@ -1097,6 +1139,7 @@ function goTreat() {
     if (!items[i].m) return goTravel();
     const c = { d: [] };
     const text = ZT.Party.treat(S, items[i].m);
+    ZT.Audio.heal();
     ZT.Save.save(S);
     showModal('TREATMENT', esc(text), [{ label: 'Continue' }], () => goTravel(), 'sick');
   });
@@ -1139,6 +1182,7 @@ function goRepair() {
       ZT.X.loseVehicle(S, c, 'abandoned at the roadside');
       text = 'Everything that can be carried comes out of the wagon and the rest stays in it. The doors are left open, which somebody says is stupid, and nobody argues.';
     }
+    if (act !== 'abandon') ZT.Audio.repair();
     ZT.Save.save(S);
     const deaths = []; while (S.pendingDeaths.length) deaths.push(S.party[S.pendingDeaths.shift()]);
     showOutcome({ art: 'hood', text: '', choices: [] }, { text, deltas: c.d, next: null, deaths });
@@ -1360,13 +1404,21 @@ function start() {
   applyTheme();
   const themeButton = $('theme-toggle');
   if (themeButton) themeButton.addEventListener('click', toggleTheme);
+  const soundButton = $('sound-toggle');
+  if (soundButton) soundButton.addEventListener('click', () => toggleSound());
+  updateSoundButton();
   applyScale();
   applyFlash();
+  ZT.Audio.setVolume(settings.volume);
+  ZT.Audio.setAmbience(settings.ambience);
+  ZT.Audio.setVisible(!document.hidden);
   ZT.Audio.setOn(settings.sound);
   ZT.R.setScanlines(settings.flash);
+  document.addEventListener('keydown', unlockAudio, { once: true, capture: true });
   document.addEventListener('keydown', onKey);
   document.addEventListener('keyup', onKey);
   document.addEventListener('pointerdown', unlockAudio, { once: true });
+  document.addEventListener('visibilitychange', () => { ZT.Audio.setVisible(!document.hidden); last = performance.now(); });
   if (STANDALONE) document.documentElement.classList.add('installed');
   const refit = () => { const cv = $('scene'); if (cv) fitCanvas(cv); };
   window.addEventListener('resize', refit);

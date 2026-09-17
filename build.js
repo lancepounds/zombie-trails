@@ -10,7 +10,7 @@ const order = fs.readdirSync(SRC).filter((f) => /^\d+_.*\.js$/.test(f)).sort();
 const js = order.map((f) => `/* ===== ${f} ===== */\n` + fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
 const css = fs.readFileSync(path.join(SRC, 'style.css'), 'utf8');
 const icons = JSON.parse(fs.readFileSync(path.join(SRC, 'icons.json'), 'utf8'));
-const VERSION = 'v1.5';
+const VERSION = 'v1.6';
 
 const manifest = {
   name: 'Zombie Trails',
@@ -51,6 +51,7 @@ ${css}
   <div class="brand">
     <span>Zombie Trails</span>
     <span>Omaha &rarr; Boise &middot; ${VERSION}</span>
+    <button id="sound-toggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Enable sound">Sound: off</button>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode">Dark mode</button>
   </div>
   <main id="screen" tabindex="-1"></main>

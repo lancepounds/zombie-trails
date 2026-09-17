@@ -5,6 +5,11 @@ events. The ordinary random-event pool grows from 144 to 164. Event-engine
 weights, daily encounter chances, difficulty settings, and simulator policies
 are unchanged; the new entries use ordinary category weights and 30-day cooldowns.
 
+This report isolates the content expansion. The merged v1.6 release also includes
+the separate diner encounter from the graphics update, bringing the combined
+library to 190 events. The before/after figures below remain the original
+matched comparison; they have not been replaced with results from another build.
+
 ## Where the content went
 
 Coverage counts ordinary random events explicitly tagged for a region, including
