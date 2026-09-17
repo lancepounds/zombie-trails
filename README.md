@@ -19,6 +19,13 @@ that journey without turning it into a different kind of game.
 
 ## What's new in v1.5
 
+- **20 additional regional encounters** fill the six least-covered stretches,
+  from the opening Missouri road to the Boise valley: 7 road, 6 zombie,
+  2 vehicle, 3 health, and 2 camp events. The library now has 189 events.
+  Missouri gains 11 encounters; Lava Plain and Boise Valley gain 3 each;
+  Laramie Range, Bear River, and Wasatch Front gain 1 each. All six regions
+  now have 11–12 region-specific random events, alongside the shared encounters.
+  See the [coverage and simulator comparison](docs/balance/regional-events.md).
 - Choose **one to five travelers**, including the driver. Names, roles, traits,
   and difficulty stay selected when setup is changed or redrawn.
 - Each traveler has a selectable mechanical trait: **Roadwise** improves mileage,
@@ -154,6 +161,7 @@ concatenates it.
 | `icons.json` | Embedded icon data used by the build |
 | `build.js` | Generates the playable HTML, manifest, and app icons |
 | `test-story.js` | Story, save/load, and built-script checks |
+| `test-content.js` | New regional events, resource gates, local eligibility, and choice outcomes |
 | `test-map.js` | Distances, branch states, route previews, estimates, and label layout |
 | `test-party.js` | Party size, traits, bonus caps, food use, estimates, old saves, and themes |
 | `sim.js` | Headless campaign simulator |
@@ -255,15 +263,16 @@ node build.js
 npm run test:quick
 ```
 
-The quick command runs `test-party.js`, `test-map.js`, `test-story.js`, and 480 simulated campaigns: 10 runs for
-each combination of four difficulties, three choice policies, and four opening
-loadouts. For 1,920 simulated campaigns and the same story checks:
+The quick command runs the party, map, story, and regional-content checks plus
+480 simulated campaigns: 10 runs for each combination of four difficulties,
+three choice policies, and four opening loadouts. For 1,920 simulated campaigns
+and the same focused checks:
 
 ```bash
 npm test
 ```
 
-You can also run `node test-map.js`, `node test-story.js`, or `node sim.js 40` separately. Map
+You can also run `node test-content.js`, `node test-map.js`, `node test-story.js`, or `node sim.js 40` separately. Map
 checks cover all 289 stop pairs against enumerated routes, partial-leg mileage,
 unavailable branches, walking, preview state preservation, and non-overlapping
 labels at every zoom. The story
@@ -271,6 +280,34 @@ checks cover the six tested encounter paths, resource-gated choices, delayed
 consequences, save/load persistence, display helpers that leave state unchanged,
 and built-script syntax. The simulator reports wins, deaths, supplies, routes,
 and event coverage; it exits unsuccessfully if campaign crashes occur.
+
+### Latest content balance check
+
+The 20-event expansion was compared against `main` at `fc38708` using
+`node sim.js 200`: **9,600 journeys before and 9,600 after**, with identical
+starting seeds, policies, loadouts, and difficulty settings. Both runs completed
+with **zero crashes**, and all 20 new events appeared in the expanded run.
+
+| Difficulty | Before win rate | After win rate | Change |
+|---|---:|---:|---:|
+| Story | 99.3% | 99.5% | +0.2 percentage points |
+| Normal | 62.1% | 61.4% | −0.7 percentage points |
+| Hard | 42.9% | 42.0% | −0.9 percentage points |
+| Nightmare | 6.0% | 5.0% | −1.0 percentage points |
+
+The sample moved slightly toward harder play outside Story mode. Nightmare's
+one-point drop is proportionally larger because wins were already uncommon.
+Infection remained the leading reported cause of death. No compensating balance
+changes were made. These are sample results from the simulator's five-person AI
+parties; new events change later random-number consumption even with matching
+starting seeds.
+
+The regional-content checks also passed **27,680 choice outcomes**, including
+solo parties, walking, scarce supplies, resource costs, and save/load. The
+[full report](docs/balance/regional-events.md) records the method, regional and
+category counts, and raw before/after output.
+
+### Earlier validation
 
 During v1.3 development, 480 campaigns completed with zero game crashes. Their
 report exposed an outdated landmark constant in the simulator; after fixing it,

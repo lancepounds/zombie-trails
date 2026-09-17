@@ -7,6 +7,30 @@ const someone = (s) => X.someone(s);
 ZT.Events.add([
 /* ================= VEHICLE ================= */
 {
+  id: 'v_missouri_cottonwood_filter', cat: 'vehicle', regions: ['missouri'], weight: 5, cool: 30,
+  cond: (s) => s.vehicle.has, art: 'hood',
+  text: 'The grille has collected a felt blanket of cottonwood fluff. The wagon is trying to breathe through Nebraska.',
+  choices: [
+    { text: 'Stop and clean the grille', hint: 'time; small repair',
+      do(s, c) { X.delay(s, c, 0.3); X.repair(s, c, 'engine', 5); X.fatigueAll(s, c, 4); return 'A brush, a stick, and a surprising volume of fluff. The temperature needle settles. The tree owes you an afternoon.'; } },
+    { text: 'Keep driving until the next stop', hint: 'engine wear',
+      do(s, c) { X.wear(s, c, 'engine', 10); if (ZT.roll(s, 0.2)) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 6); return 'The needle reaches the red before the next stop. You clean the grille beside the road anyway, with added steam.'; } return 'The wagon runs hot all afternoon. The fluff gets to travel west for free.'; } },
+  ],
+},
+{
+  id: 'v_laramie_roof_lashings', cat: 'vehicle', regions: ['laramie'], weight: 5, cool: 30,
+  cond: (s) => s.vehicle.has, art: 'underneath',
+  text: 'On a Laramie Range climb, the roof load shifts with a scrape. A cord trails past the window. Nobody remembers leaving that much spare cord.',
+  choices: [
+    { text: 'Stop and retie the load', hint: 'time and fatigue',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 6); X.repair(s, c, 'body', 4); return 'The knots are redone out of the wind. The roof rack is tightened. Everyone agrees the last knots belonged to someone else.'; } },
+    { text: 'Replace the rack clamp', hint: '1 part; quicker', show: (s) => s.inv.parts >= 1,
+      do(s, c) { X.take(s, c, 'parts', 1); X.delay(s, c, 0.2); X.repair(s, c, 'body', 12); return 'A spare clamp fits after a little persuasion. The load is secure enough to become somebody else\'s worry: gravity\'s.'; } },
+    { text: 'Keep driving to lower ground', hint: 'body damage; supply risk',
+      do(s, c) { X.wear(s, c, 'body', 9); X.noise(s, c, 6); if (ZT.roll(s, 0.35)) { X.take(s, c, 'food', 12); return 'A food sack goes over the side and down a slope that nobody volunteers to climb. The rest stays put.'; } return 'The load slides another inch and stops. Lower ground arrives before the next inch does.'; } },
+  ],
+},
+{
   id: 'v_overheat_warn', cat: 'vehicle', weight: 7, cond: (s) => s.vehicle.has && s.vehicle.engine < 70, art: 'hood',
   text: 'Steam. Not a lot of it, but it is coming from under the hood and it was not doing that this morning.',
   choices: [
@@ -197,6 +221,45 @@ ZT.Events.add([
 },
 
 /* ================= HEALTH / ILLNESS / INFECTION ================= */
+{
+  id: 'h_missouri_wet_boots', cat: 'health', regions: ['missouri'], weight: 4, cool: 30, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `${c.m.name} has had wet boots since crossing a drainage ditch. Every step now comes with a private negotiation.`,
+  choices: [
+    { text: 'Stop and dry the boots properly', hint: 'time; avoids worse injury',
+      do(s, c) { X.delay(s, c, 0.4); X.injure(s, c, c.m, 3); X.fatigue(s, c, c.m, -5); return `${c.m.name} sits with bare feet while the socks dry. The boots smell worse. Walking feels better.`; } },
+    { text: 'Use dressings from the medicine kit', hint: '1 kit; quick', show: (s) => s.inv.medicine >= 1,
+      do(s, c) { X.take(s, c, 'medicine', 1); X.heal(s, c, c.m, 4); X.fatigue(s, c, c.m, -4); return 'Clean dressings and dry foot wraps buy a comfortable afternoon. The kit is a little emptier.'; } },
+    { text: 'Keep moving', hint: 'injury and fatigue',
+      do(s, c) { X.injure(s, c, c.m, 14); X.fatigue(s, c, c.m, 12); return `${c.m.name} stops mentioning the boots. The limp continues the conversation.`; } },
+  ],
+},
+{
+  id: 'h_missouri_grain_dust', cat: 'health', regions: ['missouri'], weight: 4, cool: 30, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `Wind shakes grain dust from a torn storage bag beside the road. ${c.m.name} has been coughing since you passed it.`,
+  choices: [
+    { text: 'Rest out of the dust', hint: 'time; mild illness',
+      do(s, c) { X.delay(s, c, 0.4); X.sicken(s, c, c.m, 5); X.fatigue(s, c, c.m, -6); return `${c.m.name} rests in clean air until the coughing eases. Nothing useful happens for a while. It is still useful.`; } },
+    { text: 'Use medicine and take a short break', hint: '1 kit', show: (s) => s.inv.medicine >= 1,
+      do(s, c) { X.take(s, c, 'medicine', 1); X.delay(s, c, 0.2); X.heal(s, c, c.m, 3); return 'A kit is opened and the road waits. By the time you move on, breathing sounds like breathing again.'; } },
+    { text: 'Push on through it', hint: 'illness and fatigue',
+      do(s, c) { X.sicken(s, c, c.m, 18); X.fatigue(s, c, c.m, 10); return `${c.m.name} makes the miles and spends the evening coughing them back up.`; } },
+  ],
+},
+{
+  id: 'h_lava_heel_blister', cat: 'health', regions: ['lava'], weight: 4, cool: 30, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `A piece of volcanic grit has worn through ${c.m.name}'s sock. The stone is small. Its ambitions are not.`,
+  choices: [
+    { text: 'Stop and pad the boot', hint: 'time; minor injury',
+      do(s, c) { X.delay(s, c, 0.3); X.injure(s, c, c.m, 4); X.fatigue(s, c, c.m, -4); return 'The grit comes out, a folded strip of cloth goes in, and the road becomes tolerable again.'; } },
+    { text: 'Use a sterile dressing', hint: '1 kit; quick', show: (s) => s.inv.medicine >= 1,
+      do(s, c) { X.take(s, c, 'medicine', 1); X.heal(s, c, c.m, 4); return `${c.m.name} can put weight on the heel again. A very small stone has consumed a very useful dressing.`; } },
+    { text: 'Keep moving', hint: 'injury; lost stamina',
+      do(s, c) { X.injure(s, c, c.m, 16); X.fatigue(s, c, c.m, 12); return `${c.m.name} changes the way they walk. By dusk the other leg has a complaint too.`; } },
+  ],
+},
 {
   id: 'h_bad_water', cat: 'health', weight: 7, art: 'sick',
   text: (s) => { const m = someone(s); return `${m.name} has been sick since the middle of the night. So has whoever drank from the same jug.`; },

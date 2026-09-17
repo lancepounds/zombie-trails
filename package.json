@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "node build.js",
-    "test": "node test-party.js && node test-map.js && node test-story.js && node sim.js 40",
-    "test:quick": "node test-party.js && node test-map.js && node test-story.js && node sim.js 10"
+    "test": "node test-party.js && node test-map.js && node test-story.js && node test-content.js && node sim.js 40",
+    "test:quick": "node test-party.js && node test-map.js && node test-story.js && node test-content.js && node sim.js 10"
   }
 }

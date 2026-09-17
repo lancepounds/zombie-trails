@@ -6,6 +6,75 @@ const someone = (s) => X.someone(s);
 const T = (s) => ZT.Travel.threat(s);
 
 ZT.Events.add([
+/* Local encounters for the stretches with the least regional content. */
+{
+  id: 'z_missouri_silo_shadow', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zsilo',
+  text: 'Three figures stand in the shade of a grain elevator. When your shadow reaches them, all three turn. That settles the question of whether to ask directions.',
+  choices: [
+    { text: 'Go around behind the machinery shed', hint: 'time; quiet',
+      do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, -5); X.fatigueAll(s, c, 4); return 'The shed blocks their view long enough. You emerge west of the elevator and keep the directions you already had.'; } },
+    { text: 'Shoot a path through', hint: '6 rounds; noise', show: (s) => s.inv.ammo >= 6,
+      do(s, c) { X.shots(s, c, 6); X.noise(s, c, 22); X.horde(s, c, 3); X.kills(s, 3); return 'The elevator throws every shot back at you. Three fall. Something farther off answers.'; } },
+    { text: 'Slip past close to the wall', hint: 'quick; exposure risk',
+      do(s, c) { X.noise(s, c, 4); if (ZT.roll(s, 0.25 + T(s) * 0.15)) { const m = someone(s); X.expose(s, c, m); X.injure(s, c, m, 8); return `${m.name} brushes past a reaching hand. The space beside the wall was narrower than it looked.`; } return 'They reach a moment late. You decide not to try that twice.'; } },
+  ],
+},
+{
+  id: 'z_missouri_ditch_hands', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zwater',
+  text: 'Something in the drainage ditch grips the broken guardrail. Then another hand appears. The road is dry. The ditch is getting crowded.',
+  choices: [
+    { text: 'Wait beyond their reach', hint: 'time; safest',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 5); X.noise(s, c, -5); return 'They climb onto the eastbound shoulder one at a time and follow a flapping tarp. You go west.'; } },
+    { text: 'Move past before they climb out', hint: 'quick; injury risk',
+      do(s, c) { X.noise(s, c, 8); if (ZT.roll(s, 0.3)) { const m = someone(s); X.injure(s, c, m, 12); X.wear(s, c, 'body', 5); return `${m.name} gets caught against the rail while avoiding the first one up. Nothing bites. Nothing apologizes.`; } return 'The last pair of hands reaches pavement after you have gone. A small margin is still a margin.'; } },
+  ],
+},
+{
+  id: 'z_missouri_weigh_station', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zwrecks',
+  text: 'The weigh station lane is jammed with trucks. Something inside the scale office pounds the glass every time the loose sign bangs in the wind.',
+  choices: [
+    { text: 'Keep your distance and move on', hint: 'safe',
+      do(s, c) { X.noise(s, c, -4); return 'The office keeps arguing with the sign. Neither notices you leave.'; } },
+    { text: 'Search the nearest truck cab quietly', hint: 'small supplies; risk',
+      do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, 6); if (ZT.roll(s, X.p(s, 0.65, 'scout', 0.15))) { X.give(s, c, 'food', 12); return 'Crackers, a sealed jar of peanut butter, and a logbook with no more entries. The glass holds while you leave.'; } const m = someone(s); X.injure(s, c, m, 14); X.noise(s, c, 12); return `${m.name} catches a sleeve on the cab door when the office window breaks. You leave the cupboard unopened.`; } },
+  ],
+},
+{
+  id: 'z_lava_tube_echo', cat: 'zombie', regions: ['lava'], weight: 5, cool: 30, art: 'ztunnel',
+  text: 'A lava tube opens beside the road. A stone drops inside and you hear movement. Then more movement. The cave appears to be occupied beyond its advertised capacity.',
+  choices: [
+    { text: 'Detour around the opening quietly', hint: 'time; rough ground',
+      do(s, c) { X.delay(s, c, 0.4); X.fatigueAll(s, c, 6); X.noise(s, c, -6); return 'You keep a ridge of black rock between you and the entrance. The echoes stay underground.'; } },
+    { text: 'Pass the mouth before they emerge', hint: 'quick; bite risk',
+      do(s, c) { X.noise(s, c, 12); X.wear(s, c, 'body', 6); if (ZT.roll(s, 0.22 + T(s) * 0.15)) { const m = someone(s); X.bite(s, c, m); return `${m.name} meets the first one at the lip of the tube. It is out of the dark before anyone is ready.`; } return 'Hands appear over the lip behind you. You do not stay to count them.'; } },
+    { text: 'Shoot the first ones out', hint: '8 rounds; echoes carry', show: (s) => s.inv.ammo >= 8,
+      do(s, c) { X.shots(s, c, 8); X.noise(s, c, 26); X.horde(s, c, 4); X.kills(s, 4); return 'Four drop across the entrance. The tube carries the shots a long way. You take the opening and leave.'; } },
+  ],
+},
+{
+  id: 'z_owyhee_mailboxes', cat: 'zombie', regions: ['owyhee'], weight: 5, cool: 30, art: 'zstreet',
+  text: 'A row of rural mailboxes marks the turn toward Boise. A figure stands at each of the first three. None has collected the mail in some time.',
+  choices: [
+    { text: 'Circle around by the empty field', hint: 'time; fatigue',
+      do(s, c) { X.delay(s, c, 0.3); X.fatigueAll(s, c, 6); X.noise(s, c, -4); return 'The field brings you back onto the road beyond the boxes. Postal service remains suspended.'; } },
+    { text: 'Draw them away with a trade lot', hint: '1 trade good; noise', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.noise(s, c, 10); X.horde(s, c, 1); return 'A wind-up kitchen timer from the trade box goes over the far fence. The collection moves toward it. You move toward Boise.'; } },
+    { text: 'Push through the gap', hint: 'quick; exposure risk',
+      do(s, c) { X.noise(s, c, 8); if (ZT.roll(s, 0.28)) { const m = someone(s); X.expose(s, c, m); X.injure(s, c, m, 10); return `${m.name} comes away with a torn sleeve. Being nearly there has not made the dead more considerate.`; } return 'You clear the turn before they close the gap. One follows with an envelope stuck to its shoe.'; } },
+  ],
+},
+{
+  id: 'z_wasatch_carwash', cat: 'zombie', regions: ['wasatch'], weight: 5, cool: 30, art: 'zstreet',
+  text: 'The frontage road squeezes past a car wash. Shapes move behind the hanging rubber strips. The sign promises a spotless finish.',
+  choices: [
+    { text: 'Scout a way around the rear wall', hint: 'time; quieter',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 6); X.noise(s, c, -5); return 'The back lot connects to the next street. You leave the car wash to its current customers.'; } },
+    { text: 'Race past the entrance', hint: 'noise; injury risk',
+      do(s, c) { X.noise(s, c, 15); X.horde(s, c, 2); if (ZT.roll(s, 0.3 + T(s) * 0.15)) { const m = someone(s); X.injure(s, c, m, 18); X.wear(s, c, 'body', 8); return `${m.name} takes a hard knock getting clear of the first reaching arm. The finish is not spotless.`; } return 'The strips part behind you and a crowd spills into the road. You are already past the next corner.'; } },
+    { text: 'Shoot to hold the doorway', hint: '10 rounds; loud', show: (s) => s.inv.ammo >= 10,
+      do(s, c) { X.shots(s, c, 10); X.noise(s, c, 28); X.horde(s, c, 4); X.kills(s, 5); return 'The first five block the rest for a few seconds. It is enough time and a great deal of noise.'; } },
+  ],
+},
 {
   id: 'z_road_few', cat: 'zombie', weight: 10, art: 'zroad',
   text: (s) => `${ZT.rint(s, 4, 9)} of them are spread across both lanes, walking west, in no hurry. They have been walking a long time.`,
