@@ -5638,6 +5638,13 @@ scenes.travel = function (c, s, t, opt) {
   }
   // road
   road(c, horizon + 6);
+  // Actual next-stop signs pass on the far shoulder, clear of the driving lane.
+  const leg = ZT.currentLeg(s);
+  if (leg) {
+    const signX = 360 - ((off * 0.72 + 120) % 560 + 560) % 560;
+    destinationSign(c, Math.round(signX), horizon + 2, ZT.NODES[leg.to].name,
+      Math.max(0, Math.ceil(leg.miles - s.legMiles)), t);
+  }
   // the wagon (or walkers on foot)
   const bob = Math.sin(off * 0.9) * (s.pace === 'hard' ? 1.2 : 0.6);
   if (s.vehicle.has) {
@@ -5660,6 +5667,25 @@ function barn(c, x, y) {
   px(c, x + 12, y - 8, 6, 8);
   px(c, x + 34, y - 20, 6, 20); // silo
   line(c, x + 34, y - 20, x + 37, y - 24); line(c, x + 37, y - 24, x + 40, y - 20);
+}
+
+// Small integer-pixel wind cycles keep the old bitmap look without shimmering.
+// Only display time is used: scenery must never advance the game's seeded RNG.
+function windCloth(c, x, y, t, length) {
+  for (let i = 0; i < length; i++) {
+    const wave = Math.round(Math.sin(t * 1.8 - i * 0.55) * (i / length) * 3);
+    px(c, x + i, y + wave, 1, i < length - 3 ? 3 : 2);
+  }
+}
+function destinationSign(c, x, y, name, miles, t) {
+  const label = name.toUpperCase(), w = Math.max(64, tw(label) + 12);
+  px(c, x + 9, y - 29, 2, 29); px(c, x + w - 11, y - 29, 2, 29);
+  c.fillStyle = PAPER; c.fillRect(x, y - 40, w, 24);
+  rect(c, x, y - 40, w, 24);
+  bmp(c, label, x + 6, y - 35);
+  bmp(c, miles + ' MI', x + 6, y - 25);
+  // A torn survey ribbon, not a flashing light, catches the wind.
+  windCloth(c, x + w - 9, y - 13, t, 13);
 }
 
 scenes.title = function (c, s, t) {
@@ -5693,11 +5719,19 @@ scenes.road = sceneRoadWith(function (c, s, t, hz) {
   if (s.vehicle.has) wagon(c, 140, hz + 6, t * 4, !!s.vehicle.broken);
   else for (let i = 0; i < ZT.State.aliveCount(s); i++) figure(c, 138 + i * 10, hz + 12, t * 3 + i, false);
 });
-scenes.sign = sceneRoadWith(function (c, s, t, hz) {
+scenes.sign = sceneRoadWith(function (c, s, t, hz, opt) {
   px(c, 60, hz - 34, 4, 40); px(c, 96, hz - 34, 4, 40);
-  px(c, 46, hz - 46, 68, 26); c.fillStyle = PAPER; c.fillRect(48, hz - 44, 64, 22); c.fillStyle = INK;
-  px(c, 54, hz - 38, 42, 2); px(c, 54, hz - 32, 34, 2); px(c, 54, hz - 26, 46, 2);
-  if (s.vehicle.has) wagon(c, 190, hz + 6, t * 3, false);
+  const sway = Math.round(Math.sin(t * 0.9) * 2);
+  line(c, 62, hz - 36, 62 + sway, hz - 42);
+  line(c, 98, hz - 36, 98 + sway, hz - 42);
+  px(c, 46 + sway, hz - 46, 68, 26);
+  c.fillStyle = PAPER; c.fillRect(48 + sway, hz - 44, 64, 22);
+  px(c, 54 + sway, hz - 38, 42, 2); px(c, 54 + sway, hz - 32, 34, 2);
+  line(c, 54 + sway, hz - 26, 98 + sway, hz - 26);
+  line(c, 94 + sway, hz - 29, 99 + sway, hz - 26);
+  line(c, 94 + sway, hz - 23, 99 + sway, hz - 26);
+  windCloth(c, 100, hz - 14, t, 22);
+  parkedArrival(c, s, t, opt, 190, hz + 6);
 });
 scenes.wrecks = sceneRoadWith(function (c, s, t, hz) {
   for (let i = 0; i < 7; i++) { const x = 8 + i * 42, y = hz + 4 + (i % 3) * 6; carHulk(c, x, y, i); }
@@ -5816,7 +5850,12 @@ scenes.motel = sceneRoadWith(function (c, s, t, hz) {
   px(c, 40, hz - 34, 200, 34); c.fillStyle = PAPER; c.fillRect(42, hz - 32, 196, 30); c.fillStyle = INK;
   for (let i = 0; i < 8; i++) px(c, 50 + i * 24, hz - 22, 10, 22);
   px(c, 36, hz - 38, 208, 4);
-  px(c, 250, hz - 46, 4, 46); px(c, 240, hz - 56, 26, 14);
+  px(c, 250, hz - 46, 4, 46);
+  const sway = Math.round(Math.sin(t * 0.7) * 2);
+  line(c, 251, hz - 48, 253 + sway, hz - 52);
+  c.fillStyle = PAPER; c.fillRect(231 + sway, hz - 65, 45, 15);
+  rect(c, 231 + sway, hz - 65, 45, 15); bmp(c, 'MOTEL', 241 + sway, hz - 60);
+  windCloth(c, 241, hz - 8, t, 13);
 });
 scenes.ferry = scenes.water;
 scenes.night = function (c, s, t, opt) {
@@ -6086,12 +6125,17 @@ function restArea(c, s, t, opt, zombies) {
   line(c, 162, 68, 231, 46); line(c, 231, 46, 297, 68);
   plate(c, 'REST AREA', 201, 74);
   px(c, 182, 88, 17, 20); px(c, 254, 88, 17, 20);
+  // The loose washroom door opens a little in the wind, exposing the dark room.
+  const door = 5 + Math.round((Math.sin(t * 0.65) + 1) * 4);
+  c.fillStyle = PAPER; c.fillRect(183, 89, door, 18);
+  px(c, 183 + door, 88, 1, 20); px(c, 181 + door, 99, 1, 2);
   rect(c, 217, 88, 15, 20); for (let y = 91; y < 104; y += 4) px(c, 220, y, 8, 2);
   rect(c, 27, 65, 49, 30); plate(c, 'MAP', 44, 69);
   line(c, 32, 87, 67, 77); line(c, 47, 77, 56, 91);
   px(c, 33, 95, 2, 13); px(c, 69, 95, 2, 13);
   px(c, 101, 97, 44, 3); line(c, 109, 100, 104, 109); line(c, 135, 100, 141, 109);
   px(c, 99, 104, 48, 2);
+  windCloth(c, 74, 93, t, 13);
   if (zombies) for (let i = 0; i < 9; i++) figure(c, 83 + i * 22 + Math.sin(t * 0.5 + i) * 3, 88 + i % 3 * 7, t + i, true);
   parkedArrival(c, s, t, opt, 55, 123);
   weatherFX(c, s.weather, t, opt && opt.reduce);
@@ -6099,17 +6143,78 @@ function restArea(c, s, t, opt, zombies) {
 scenes.reststop = (c, s, t, opt) => restArea(c, s, t, opt, false);
 scenes.zrest = (c, s, t, opt) => restArea(c, s, t, opt, true);
 
-const originalCamp = scenes.camp;
+function campBuilding(c, s, t) {
+  const x = 222, y = 101, w = 78, h = 34;
+  const terrain = ZT.region(s).terrain;
+  const cabin = terrain === 'mountain' || terrain === 'hills' || terrain === 'river';
+  c.fillStyle = PAPER; c.fillRect(x - 3, y - h - 16, w + 6, h + 17);
+  // Cabin in wooded country; low roadside shelter on the plains and desert.
+  if (cabin) {
+    px(c, x + 53, y - h - 17, 6, 17);
+    smoke(c, x + 55, y - h - 20, t * 0.6, 27);
+    line(c, x - 4, y - h, x + w / 2, y - h - 14);
+    line(c, x + w / 2, y - h - 14, x + w + 4, y - h);
+  } else {
+    line(c, x - 4, y - h - 4, x + w + 4, y - h - 4);
+    line(c, x - 4, y - h - 4, x, y - h);
+    line(c, x + w + 4, y - h - 4, x + w, y - h);
+  }
+  rect(c, x, y - h, w, h);
+  for (let yy = y - h + 6; yy < y; yy += 6) line(c, x + 1, yy, x + w - 2, yy);
+  // Dark doorway and a lantern window; the shutter moves without blinking.
+  px(c, x + 12, y - 24, 14, 24);
+  c.fillStyle = PAPER; c.fillRect(x + 41, y - 26, 25, 18);
+  rect(c, x + 43, y - 24, 21, 14);
+  px(c, x + 53, y - 23, 1, 12); px(c, x + 44, y - 17, 19, 1);
+  const shutter = 3 + Math.round((Math.sin(t * 0.7) + 1) * 3);
+  grey(c, x + 43, y - 23, shutter, 12, 'g50');
+  px(c, x + 43 + shutter, y - 23, 1, 12);
+  // Porch tarp tied to two posts. The hem, rather than the whole roof, moves.
+  px(c, x - 6, y - 12, 2, 15); px(c, x + 33, y - 12, 2, 15);
+  line(c, x - 8, y - 15, x + 36, y - 15);
+  for (let dx = 0; dx < 43; dx++) {
+    const ripple = Math.round(Math.sin(t * 1.3 + dx * 0.22) * 1.5);
+    px(c, x - 7 + dx, y - 12 + ripple, 1, 1);
+  }
+}
 scenes.camp = function (c, s, t, opt) {
-  originalCamp(c, s, t, opt);
-  // Canvas tent, bedroll, kettle and smoke rising from the cooking fire.
+  const hz = 107;
+  for (let i = 0; i < 40; i++) px(c, hash(i * 3.3) * W, hash(i * 7.7) * 52, 1, 1);
+  if (['mountain', 'hills'].includes(ZT.region(s).terrain)) mountains(c, 11, 81, 31);
+  trees(c, 51, hz, 1.2); ground(c, hz + 2, 0);
+  campBuilding(c, s, t);
+  if (s.vehicle.has) wagon(c, 20, hz - 6, 0, false);
+  // Canvas tent and a loose entrance flap moving in the breeze.
   c.fillStyle = PAPER; c.fillRect(73, 112, 73, 37);
   line(c, 76, 147, 102, 114); line(c, 102, 114, 139, 147); line(c, 76, 147, 139, 147);
-  line(c, 102, 114, 102, 147); grey(c, 104, 133, 14, 13, 'g25');
+  const flap = Math.round(Math.sin(t * 1.2) * 3);
+  line(c, 102, 114, 102 + flap, 147);
+  grey(c, 104 + flap, 134, 12, 12, 'g25');
+  line(c, 102, 114, 118 + flap, 147);
   line(c, 76, 147, 69, 151); line(c, 139, 147, 146, 151);
+  windCloth(c, 103, 115, t, 12);
+  // A low cooking fire, kettle, and one seated figure per living traveler.
+  for (let i = 0; i < 18; i++) {
+    const p = (t * 17 + i * 5) % 20;
+    px(c, 160 + Math.sin(i * 2 + t * 2) * (2 + p * 0.16), 114 - p, 2, 2);
+  }
+  line(c, 151, 116, 170, 113); line(c, 152, 113, 169, 116);
+  const seats = [[127, 94], [186, 100], [181, 125], [214, 120], [251, 117]];
+  for (let i = 0; i < ZT.State.aliveCount(s); i++) {
+    const [x, y] = seats[i];
+    figure(c, x, y, 0, false);
+    // Only the cup/hand shifts; seated survivors do not walk in place.
+    const lift = Math.round(Math.max(0, Math.sin(t * 0.65 + i)) * 2);
+    line(c, x + 5, y + 7, x + 9, y + 7 - lift);
+    rect(c, x + 8, y + 5 - lift, 3, 3);
+  }
   rect(c, 205, 136, 34, 9); px(c, 208, 137, 1, 7);
-  line(c, 150, 110, 161, 83); line(c, 161, 83, 174, 110);
-  px(c, 157, 93, 9, 6); circle(c, 161, 93, 4); smoke(c, 160, 86, t, 36);
+  line(c, 149, 117, 161, 89); line(c, 161, 89, 174, 117);
+  const kettle = Math.round(Math.sin(t * 0.8));
+  line(c, 161, 89, 161 + kettle, 99);
+  px(c, 157 + kettle, 101, 9, 6); circle(c, 161 + kettle, 101, 4);
+  smoke(c, 160 + kettle, 95, t * 0.7, 32);
+  weatherFX(c, s.weather, t, opt && opt.reduce);
 };
 const originalHood = scenes.hood;
 scenes.hood = function (c, s, t, opt) {

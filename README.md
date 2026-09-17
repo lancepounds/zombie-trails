@@ -25,6 +25,15 @@ that journey without turning it into a different kind of game.
 - **More pixel-art detail:** pumps and hoses, diner windows and a swinging sign,
   picnic tables and a map board, a camp tent and kettle, repair tools, drifting
   smoke, passing fences, and clouds. Both monochrome themes are supported.
+- **Living road signs:** destination boards pass along the shoulder and show
+  the selected next stop and remaining leg mileage. Loose roadside and motel
+  signs sway, and torn cloth strips move in the wind. At sign encounters the
+  wagon rolls to a stop while you read; the arrival does not replay on outcomes.
+- **Animated camp shelters:** wooded and mountain routes have a small cabin
+  with chimney smoke; open country has a low roadside shelter. Shutters, porch
+  canvas, tent flaps, and the hanging kettle move gently. Rest-area buildings
+  have a loose door that moves in the breeze. These details are cosmetic and
+  never spend supplies or consume the journey's random seed.
 - **A diner encounter:** search the pantry, eat your own supplies in a booth,
   or keep going. Rewards still cost time, food, or noise.
 - **Retro sound effects and ambience:** engine start and stop, gunfire, repairs,
@@ -40,6 +49,12 @@ that journey without turning it into a different kind of game.
   suppresses the scavenging minigame's damage blink and full-screen flash.
 
 Existing saved journeys and settings continue to load.
+
+![Animated roadside sign and mountain camp](docs/previews/signs-and-camp.gif)
+
+The preview loops; in the game, arrivals play once and the scene waits for your
+choice. Turning off scene animation, or enabling your device's reduced-motion
+preference, keeps signs and shelters still.
 
 ## Added in v1.5
 
@@ -316,6 +331,13 @@ choices, untimed scenes, saved settings, resumed games, both themes, and a
 390-pixel mobile viewport. Native OfflineAudioContext rendering verified that
 the effects produce audio without clipping and that muting cancels queued notes.
 The dependency-free audio tests cover hidden tabs and unsupported audio too.
+The later sign-and-camp update passed 1,718 native Canvas renders across both
+themes, seven weather conditions, one/five travelers, driving/walking, every
+route destination, and the shelter variants. Pixel comparisons confirmed that
+the new signboards, ribbons, shutter, porch canvas, tent flap, chimney smoke,
+and rest-area door move, and that motion-off freezes the scenes completely.
+Rendering preserves the game state and random seed; settled sign arrivals stay
+parked. Party, map, story, built-script, and audio checks also passed.
 Safari and physical mobile-device audio have not been tested. Automated
 campaigns and native renders do not verify the full page layout, touch interaction,
 or how the story feels.
