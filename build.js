@@ -10,7 +10,7 @@ const order = fs.readdirSync(SRC).filter((f) => /^\d+_.*\.js$/.test(f)).sort();
 const js = order.map((f) => `/* ===== ${f} ===== */\n` + fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
 const css = fs.readFileSync(path.join(SRC, 'style.css'), 'utf8');
 const icons = JSON.parse(fs.readFileSync(path.join(SRC, 'icons.json'), 'utf8'));
-const VERSION = 'v1.6';
+const VERSION = 'v1.7';
 
 const manifest = {
   name: 'Zombie Trails',

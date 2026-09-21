@@ -8,7 +8,7 @@ const T = (s) => ZT.Travel.threat(s);
 ZT.Events.add([
 {
   id: 'z_midwest_beer_tent', cat: 'zombie', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
-  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'zrest',
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'beer_tent',
   text: 'The county fair beer tent promises COLD ONES. A dozen figures lean against the fence in the shade. One turns toward you with half a face. The beer garden has a very relaxed admissions policy.',
   choices: [
     { text: 'Slip around the back for sealed supplies', hint: 'half a day; fatigue +6; loot or injury',
@@ -23,7 +23,7 @@ ZT.Events.add([
 },
 {
   id: 'z_midwest_sprinkler', cat: 'zombie', regions: ['missouri', 'platte', 'sandhills'], weight: 4, cool: 30,
-  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'field',
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'sprinkler',
   text: 'An irrigation sprinkler sweeps across the road. Three dead people follow it back and forth, bumping into each other when it reverses. For once, someone else looks worse in the heat.',
   choices: [
     { text: 'Wait for them to follow the spray away', hint: 'half a day; fatigue +3; quiet passage',

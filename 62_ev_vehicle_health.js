@@ -13,7 +13,7 @@ ZT.Events.add([
 /* ================= VEHICLE ================= */
 {
   id: 'v_midwest_summer_flat', cat: 'vehicle', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 8, cool: 30,
-  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.vehicle.has && !s.vehicle.broken, art: 'tire',
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.vehicle.has && !s.vehicle.broken, art: 'summer_flat',
   text: 'A rear tire goes flat in the full heat of a Midwest afternoon. The jack sinks into the shoulder. The tire iron is too hot to hold. Everyone is exhausted, thirsty, and thinking about a cold beer. A farm stand down the road has a hand-painted sign: COLD DRINKS.',
   choices: [
     { text: 'Fit the spare, then reach the drink stand', hint: '1 part; half a day; tires net +6; fatigue +16; morale -5', show: (s) => s.inv.parts >= 1,
@@ -30,7 +30,7 @@ ZT.Events.add([
   ],
 },
 {
-  id: 'p_midwest_cold_drinks', cat: 'people', weight: 0, cond: () => false, art: 'station',
+  id: 'p_midwest_cold_drinks', cat: 'people', weight: 0, cond: () => false, art: 'cold_drinks',
   // Follow-up only: weight 0 alone does not exclude an event from this engine.
   text: 'The stand has a propane refrigerator, cold beer, lemonade, and bottled water. The owner looks at the sweaty faces and the tire iron. "One of those days?" There is shade beside the counter.',
   choices: [

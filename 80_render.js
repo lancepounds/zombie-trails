@@ -8,10 +8,12 @@ const W = 320, H = 160;
 let INK = '#181818', PAPER = '#e8e8e8', paletteMode = null;
 let buf = null, bctx = null;
 const patterns = {};
+const sceneryCache = new Map();
 
 function ensure() {
   if (buf && paletteMode === ZT.Display.mode) return;
   paletteMode = ZT.Display.mode;
+  sceneryCache.clear();
   ({ ink: INK, paper: PAPER } = ZT.Display.palette());
   buf = document.createElement('canvas');
   buf.width = W; buf.height = H;
@@ -23,20 +25,35 @@ function ensure() {
     g75: [[1, 1, 1, 0], [1, 0, 1, 1], [1, 1, 1, 1], [0, 1, 1, 1]],
   })) {
     const p = document.createElement('canvas');
-    p.width = bits[0].length; p.height = bits.length;
+    // Full-size dither sheets avoid filtered CanvasPattern sampling in renderers.
+    p.width = W + 4; p.height = H + 4;
     const c = p.getContext('2d');
     c.fillStyle = INK;
-    for (let y = 0; y < bits.length; y++) for (let x = 0; x < bits[0].length; x++) if (bits[y][x]) c.fillRect(x, y, 1, 1);
+    for (let y = 0; y < p.height; y++) for (let x = 0; x < p.width; x++) if (bits[y % bits.length][x % bits[0].length]) c.fillRect(x, y, 1, 1);
     patterns[name] = p;
   }
 }
 
 /* ---------- primitives ---------- */
 function clear(c) { c.fillStyle = PAPER; c.fillRect(0, 0, W, H); }
-function px(c, x, y, w, h) { c.fillStyle = INK; c.fillRect(x | 0, y | 0, w || 1, h || 1); }
+function cachedScenery(c, key, paint) {
+  let layer=sceneryCache.get(key);
+  if(!layer) {
+    layer=document.createElement('canvas');layer.width=W;layer.height=H;
+    const ctx=layer.getContext('2d');ctx.imageSmoothingEnabled=false;paint(ctx);
+    sceneryCache.set(key,layer);
+  }
+  c.drawImage(layer,0,0);
+}
+function px(c, x, y, w, h) { c.fillStyle = INK; c.fillRect(x | 0, y | 0, Math.round(w || 1), Math.round(h || 1)); }
 function grey(c, x, y, w, h, level) {
-  const p = c.createPattern(patterns[level || 'g50'], 'repeat');
-  c.save(); c.fillStyle = p; c.translate(0, 0); c.fillRect(x | 0, y | 0, w | 0, h | 0); c.restore();
+  const p = patterns[level || 'g50'];
+  x = Math.floor(x); y = Math.floor(y); w = Math.floor(w); h = Math.floor(h);
+  for (let yy = 0; yy < h; yy += H) for (let xx = 0; xx < w; xx += W) {
+    const sx = ((x + xx) % 4 + 4) % 4, sy = ((y + yy) % 4 + 4) % 4;
+    const width = Math.min(W, w - xx), height = Math.min(H, h - yy);
+    c.drawImage(p, sx, sy, width, height, x + xx, y + yy, width, height);
+  }
 }
 function line(c, x1, y1, x2, y2) {
   c.fillStyle = INK;
@@ -61,6 +78,35 @@ function circle(c, cx, cy, r, col) {
 function disc(c, cx, cy, r, col) {
   c.fillStyle = col || INK;
   for (let y = -r; y <= r; y++) { const w = Math.floor(Math.sqrt(r * r - y * y)); c.fillRect(Math.round(cx - w), Math.round(cy + y), w * 2 + 1, 1); }
+}
+// Scanline polygons keep every edge on the pixel grid, without canvas antialiasing.
+function shape(c, points, fill) {
+  c.fillStyle = patterns[fill] ? INK : (fill || INK);
+  const low = Math.max(0, Math.ceil(Math.min(...points.map(p => p[1]))));
+  const high = Math.min(H - 1, Math.floor(Math.max(...points.map(p => p[1]))));
+  for (let y = low; y <= high; y++) {
+    const hits = [];
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i], b = points[(i + 1) % points.length];
+      if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y)) hits.push(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1]));
+    }
+    hits.sort((a, b) => a - b);
+    for (let i = 0; i + 1 < hits.length; i += 2) {
+      const x = Math.ceil(hits[i]), width = Math.floor(hits[i + 1]) - x + 1;
+      if (patterns[fill]) grey(c,x,y,width,1,fill); else c.fillRect(x,y,width,1);
+    }
+  }
+}
+function cloud(c, x, y, size) {
+  x = Math.round(x); y = Math.round(y); size = size || 1;
+  c.save(); c.translate(x, y); c.scale(size, size);
+  cachedScenery(c,'cloud',c=>{
+  shape(c, [[0,9],[5,5],[12,5],[16,0],[25,0],[29,4],[35,4],[39,8],[46,9],[43,12],[3,12]], PAPER);
+  line(c, 0, 9, 5, 5); line(c, 5, 5, 12, 5); line(c, 12, 5, 16, 0);
+  px(c, 16, 0, 9, 1); line(c, 25, 0, 29, 4); px(c, 29, 4, 6, 1);
+  line(c, 35, 4, 39, 8); px(c, 6, 13, 31, 1); grey(c, 7, 10, 30, 2, 'g25');
+  });
+  c.restore();
 }
 function text(c, str, x, y, scale) {
   scale = scale || 1;
@@ -115,12 +161,13 @@ function ground(c, y, off) {
   }
 }
 
-function road(c, y) {
+function road(c, y, depth) {
   // Two clear shoulders frame the driving surface; no floating specks or dashes.
+  depth = depth || 36;
   grey(c, 0, y - 2, W, 2, 'g25');
   px(c, 0, y, W, 1);
-  px(c, 0, y + 36, W, 1);
-  grey(c, 0, y + 37, W, 2, 'g25');
+  px(c, 0, y + depth, W, 1);
+  grey(c, 0, y + depth + 1, W, 3, 'g50');
 }
 
 function skyline(c, seed, baseY, height, density, kind) {
@@ -144,27 +191,37 @@ function skyline(c, seed, baseY, height, density, kind) {
   }
 }
 function trees(c, seed, baseY, scale) {
-  for (let i = 0; i < 26; i++) {
+  cachedScenery(c,`trees:${seed}:${baseY}:${scale}`,c=>{
+  for (let i = 0; i < 23; i++) {
     const x = Math.floor(hash(seed + i * 2.3) * (W + 20)) - 10;
     const h = (5 + hash(seed + i * 5.1) * 9) * (scale || 1);
-    px(c, x, baseY - h, 1, h);
-    for (let k = 0; k < 4; k++) { const yy = baseY - h + k * (h / 4); const wdt = Math.max(1, (4 - k) * 1.2 * (scale || 1)); px(c, x - wdt / 2, yy, wdt, 1); }
+    px(c, x, baseY - h, 2, h);
+    for (let k = 0; k < 3; k++) {
+      const top = Math.round(baseY - h + k * h * 0.2), bottom = Math.round(top + h * 0.48), width = (3 + k * 2) * (scale || 1);
+      shape(c, [[x + 1, top], [x - width, bottom], [x + width + 1, bottom]], INK);
+      line(c, x - Math.round(width) + 2, bottom - 1, x - 1, bottom - 1);
+      c.fillStyle = PAPER; c.fillRect(x + 1, top + 3, 1, 2);
+    }
   }
+  });
 }
 function mountains(c, seed, baseY, height) {
+  cachedScenery(c,`mountains:${seed}:${baseY}:${height}`,c=>{
   c.fillStyle = INK;
   let x = -10;
   while (x < W + 10) {
     const h = 12 + hash(seed + x * 0.37) * height;
     const w = 26 + hash(seed + x * 0.71) * 40;
-    for (let i = 0; i <= w; i++) {
-      const t = i / w;
-      const y = baseY - h * (1 - Math.abs(t * 2 - 1));
-      c.fillRect(Math.round(x + i), Math.round(y), 1, 1);
-      if (t > 0.42 && t < 0.58 && h > height * 0.7) px(c, Math.round(x + i), Math.round(y) + 1, 1, 2);
-    }
+    const peak = Math.round(x + w * 0.47), top = Math.round(baseY - h);
+    const outline = [[Math.round(x),baseY],[peak,top],[Math.round(x+w),baseY]];
+    shape(c, outline, PAPER); shape(c, outline, 'g25');
+    shape(c, [[peak,top],[peak+Math.round(w*0.12),baseY-h*0.38],[Math.round(x+w),baseY],[peak,baseY]], 'g50');
+    line(c, peak, top, peak + 5, top + 10);
+    if (height >= 30) shape(c, [[peak,top+1],[peak-6,top+9],[peak-1,top+6],[peak+4,top+10]], PAPER);
+    line(c, x, baseY, peak, top); line(c, peak, top, x + w, baseY);
     x += w * 0.75;
   }
+  });
 }
 function poles(c, off, baseY) {
   for (let i = 0; i < 6; i++) {
@@ -173,45 +230,35 @@ function poles(c, off, baseY) {
     px(c, x, baseY - 34, 2, 34);
     px(c, x - 6, baseY - 32, 14, 1);
     px(c, x - 4, baseY - 28, 10, 1);
+    px(c, x - 5, baseY - 34, 1, 2); px(c, x + 5, baseY - 34, 1, 2);
+    for (let u = 0; u < 64; u++) px(c, x + u, baseY - 32 + Math.sin(u / 64 * Math.PI) * 5, 1, 1);
   }
 }
 
 /* ---------- the wagon ---------- */
-function wagon(c, x, y, frame, dead) {
-  // a boxy 1980s station wagon silhouette, 44x18
-  c.fillStyle = INK;
-  const b = (dx, dy, w, h) => c.fillRect(Math.round(x + dx), Math.round(y + dy), w, h);
-  // body
-  b(2, 8, 40, 7);
-  b(6, 3, 26, 5);      // cabin
-  b(0, 11, 44, 3);     // lower body
-  // roof rack with load
-  b(8, 1, 22, 1);
-  b(10, 0, 4, 1); b(18, 0, 6, 1); b(26, 0, 3, 1);
-  // windows (cut out)
-  c.fillStyle = PAPER;
-  c.fillRect(Math.round(x + 8), Math.round(y + 4), 8, 4);
-  c.fillRect(Math.round(x + 18), Math.round(y + 4), 6, 4);
-  c.fillRect(Math.round(x + 26), Math.round(y + 4), 4, 4);
-  c.fillStyle = INK;
-  // wheels
-  const wy = y + 14;
-  for (const wx of [x + 7, x + 33]) {
-    disc(c, wx + 2, wy + 2, 3);
-    c.fillStyle = PAPER;
-    // spokes rotate
-    const a = frame * 0.9;
-    for (let k = 0; k < 4; k++) {
-      const t = a + (k * Math.PI) / 2;
-      c.fillRect(Math.round(wx + 2 + Math.cos(t) * 2), Math.round(wy + 2 + Math.sin(t) * 2), 1, 1);
+function wagon(c, x, y, frame, dead, state) {
+  // Wood-paneled wagon, loaded roof rack, chrome trim, and cut-out wheel arches.
+  c.save(); c.translate(Math.round(x), Math.round(y));
+  grey(c, 2, 19, 42, 2, 'g50');
+  shape(c, [[1,9],[5,9],[7,3],[30,3],[35,9],[41,9],[44,12],[44,16],[0,16],[0,11]], INK);
+  px(c, 7, 1, 23, 1); px(c, 8, -3, 11, 4); rect(c, 21, -2, 8, 3);
+  c.fillStyle = PAPER; c.fillRect(10,-2,7,1); c.fillRect(13,-3,1,4);
+  for (const [xx, ww] of [[8,7],[17,6],[25,5]]) { c.fillStyle = PAPER; c.fillRect(xx,5,ww,4); }
+  px(c, 27, 7, 2, 2); px(c, 28, 8, 3, 1); // driver's silhouette
+  c.fillStyle = PAPER; c.fillRect(2,10,38,1); c.fillRect(12,12,18,3);
+  px(c, 18, 12, 1, 3); px(c, 27, 12, 1, 3); px(c, 20, 12, 3, 1);
+  c.fillStyle = PAPER; c.fillRect(1,14,3,1); c.fillRect(39,11,3,2); c.fillRect(35,15,8,1);
+  px(c, 32, 8, 3, 1); px(c, -1, 15, 3, 2); px(c, 42, 15, 3, 2);
+  for (const wx of [9,35]) {
+    disc(c, wx, 17, 4, PAPER); disc(c, wx, 17, 3); disc(c, wx, 17, 1, PAPER);
+    const a = dead ? 0 : frame * 0.9;
+    for (let k = 0; k < 2; k++) {
+      c.fillStyle = PAPER; c.fillRect(Math.round(wx+Math.cos(a+k*Math.PI)*2),Math.round(17+Math.sin(a+k*Math.PI)*2),1,1);
     }
-    c.fillStyle = INK;
   }
-  if (dead) { // broken down: hood up, no wheels turning
-    c.fillStyle = INK;
-    c.fillRect(Math.round(x + 34), Math.round(y + 2), 8, 1);
-    c.fillRect(Math.round(x + 41), Math.round(y + 2), 1, 6);
-  }
+  if (state && state.vehicle.body < 40) { line(c, 19, 10, 24, 15); px(c, 4, 12, 3, 2); }
+  if (dead) { line(c, 34, 9, 40, 1); line(c, 40, 1, 44, 3); px(c, 35, 9, 6, 2); }
+  c.restore();
 }
 function walkers(c, x, y, frame, n) {
   for (let i = 0; i < n; i++) {
@@ -220,15 +267,24 @@ function walkers(c, x, y, frame, n) {
   }
 }
 function figure(c, x, y, phase, shamble) {
-  c.fillStyle = INK;
-  const sway = shamble ? Math.sin(phase) * 1 : 0;
-  c.fillRect(Math.round(x + 1 + sway), Math.round(y), 3, 3);       // head
-  c.fillRect(Math.round(x + 1), Math.round(y + 3), 3, 6);          // body
-  const l = Math.sin(phase) * 2;
-  c.fillRect(Math.round(x), Math.round(y + 9), 2, 4 - Math.abs(l) * 0.5);
-  c.fillRect(Math.round(x + 3), Math.round(y + 9), 2, 4 - Math.abs(l) * 0.5);
-  if (shamble) { c.fillRect(Math.round(x - 1), Math.round(y + 4), 2, 1); c.fillRect(Math.round(x + 4), Math.round(y + 4), 2, 1); }
-  else { c.fillRect(Math.round(x), Math.round(y + 4), 1, 4); c.fillRect(Math.round(x + 4), Math.round(y + 4), 1, 4); }
+  c.save(); c.translate(Math.round(x), Math.round(y));
+  const lean = shamble ? 1 + Math.round(Math.sin(phase)) : 0;
+  const stride = Math.round(Math.sin(phase) * 2);
+  px(c, 1 + lean, 0, 3, 3); px(c, 1, 3, 4, 5);
+  c.fillStyle = PAPER; c.fillRect(3+lean,1,1,1);
+  if (shamble) {
+    px(c, 4, 4, 3, 2); px(c, 7, 5 + (stride > 0 ? 1 : 0), 2, 1);
+    px(c, 0, 5, 1, 4); px(c, 4, 8, 2, 1);
+    line(c, 2, 8, 1 - stride, 12); line(c, 4, 8, 5 + stride, 12);
+    px(c, 0 - stride, 12, 3, 1); px(c, 4 + stride, 12, 3, 1);
+  } else {
+    px(c, 0, 0, 5, 1); px(c, -1, 4, 2, 4); // cap and pack
+    line(c, 5, 4, 5 + stride, 8); px(c, 1, 8, 4, 1);
+    line(c, 2, 9, 1 - stride, 12); line(c, 4, 9, 4 + stride, 12);
+    px(c, -stride, 12, 3, 1); px(c, 3 + stride, 12, 3, 1);
+    c.fillStyle = PAPER; c.fillRect(2,4,1,3);
+  }
+  c.restore();
 }
 
 /* ---------- weather overlays ---------- */
@@ -265,35 +321,52 @@ function vignetteScanlines(c, on) {
 /* ---------- scenes ---------- */
 const scenes = {};
 
+function landscape(c, s, base, off) {
+  const terrain = ZT.region(s).terrain, scroll = off || 0;
+  if (s.weather === 'heat') { circle(c, 274, 24, 10); grey(c, 267, 18, 15, 13, 'g25'); }
+  else { cloud(c, 30 - (scroll * 0.05 % 100), 18); cloud(c, 218 - (scroll * 0.035 % 80), 29); }
+  if (terrain === 'mountain' || terrain === 'hills') {
+    mountains(c, 19, base - 12, terrain === 'mountain' ? 43 : 29);
+    mountains(c, 42, base, 19); trees(c, 24, base + 6, 1.1);
+  } else if (terrain === 'suburb' || terrain === 'industry') {
+    skyline(c, 7, base, 36, 0.7, terrain === 'industry' ? 'industry' : 'town');
+    px(c, 248, base - 45, 2, 45); px(c, 264, base - 45, 2, 45);
+    shape(c, [[242,base-45],[247,base-51],[266,base-51],[271,base-45],[269,base-33],[244,base-33]], INK);
+    line(c, 248, base - 30, 266, base - 4); line(c, 266, base - 30, 248, base - 4);
+  } else if (terrain === 'desert' || terrain === 'plains') {
+    shape(c, [[0,base-12],[33,base-12],[45,base-20],[90,base-20],[112,base-7],[177,base-7],[195,base-15],[235,base-15],[260,base-5],[320,base-10],[320,base+8],[0,base+8]], 'g25');
+    line(c, 45, base - 20, 90, base - 20); line(c, 195, base - 15, 235, base - 15);
+    for (let i = 0; i < 10; i++) { const x = ((i * 39 - scroll * 0.2) % 390 + 390) % 390 - 30; px(c, x, base + 2, 5, 1); px(c, x + 2, base, 1, 3); }
+  } else {
+    // Nebraska reads as fields, windbreaks, and grain storage instead of a city skyline.
+    shape(c, [[0,base-7],[63,base-14],[148,base-7],[232,base-12],[320,base-5],[320,base+6],[0,base+6]], 'g25');
+    trees(c, 5, base, 0.65);
+    const bx = Math.round(((240 - scroll * 0.14) % 440 + 440) % 440 - 40);
+    barn(c, bx, base + 4);
+    for (let i = 0; i < 3; i++) {
+      const xx = bx + 46 + i * 11;
+      c.fillStyle = PAPER; c.fillRect(xx, base-25, 10, 29); rect(c, xx, base-25, 10, 29);
+      line(c, xx-1, base-25, xx+5, base-31); line(c, xx+5, base-31, xx+11, base-25);
+      grey(c, xx+6, base-24, 3, 27, 'g50');
+    }
+    for (let i = 0; i < 16; i++) line(c, i * 22, base + 9, i * 18 + 18, base + 3);
+  }
+}
+
 scenes.travel = function (c, s, t, opt) {
-  const reg = ZT.region(s);
-  const terrain = reg.terrain;
   const off = (opt.dist || 0);
   const horizon = 96;
-  // sky detail
-  if (s.weather === 'clear' || s.weather === 'cold') {
-    for (let i = 0; i < 20; i++) { const x = hash(i * 3.3) * W, y = hash(i * 7.7) * 50; px(c, x, y, 1, 1); }
-  }
-  // far layer
-  if (terrain === 'mountain' || terrain === 'hills') mountains(c, 11, horizon - 6, terrain === 'mountain' ? 46 : 22);
-  else if (terrain === 'suburb' || terrain === 'industry' || terrain === 'highway') skyline(c, 7, horizon - 4, terrain === 'industry' ? 34 : 22, 0.7, terrain === 'industry' ? 'industry' : 'town');
-  else if (terrain === 'farm' || terrain === 'river') { trees(c, 3, horizon - 2, 1); barn(c, ((-off * 0.15) % 400 + 400) % 400 - 40, horizon - 2); }
-  else if (terrain === 'plains' || terrain === 'desert') { for (let i = 0; i < 5; i++) { const x = (((i * 90 - off * 0.12) % 450) + 450) % 450 - 40; if (x < W + 20) { px(c, x, horizon - 12, 1, 12); px(c, x - 4, horizon - 13, 9, 1); } } }
+  landscape(c, s, horizon - 9, off);
   // mid layer: poles
   poles(c, off * 0.6, horizon + 2);
-  // Slow clouds and a passing fence give the roadside depth without road debris.
-  for (let i = 0; i < 3; i++) {
-    const x = ((i * 127 - off * 0.08) % 400 + 400) % 400 - 40;
-    line(c, x, 22 + i * 9, x + 24, 22 + i * 9);
-    line(c, x + 5, 20 + i * 9, x + 17, 20 + i * 9);
-  }
+  // A passing fence stays beyond the shoulder, never in the driving lane.
   for (let i = 0; i < 10; i++) {
     const x = ((i * 40 - off * 0.7) % 400 + 400) % 400 - 40;
     px(c, x, horizon - 4, 2, 10);
     line(c, x, horizon, x + 40, horizon);
   }
   // road
-  road(c, horizon + 6);
+  road(c, horizon + 6, 46);
   // Actual next-stop signs pass on the far shoulder, clear of the driving lane.
   const leg = ZT.currentLeg(s);
   if (leg) {
@@ -302,17 +375,22 @@ scenes.travel = function (c, s, t, opt) {
       Math.max(0, Math.ceil(leg.miles - s.legMiles)), t);
   }
   // the wagon (or walkers on foot)
-  const bob = Math.sin(off * 0.9) * (s.pace === 'hard' ? 1.2 : 0.6);
+  const bob = Math.round(Math.sin(off * 0.9) * (s.pace === 'hard' ? 1.2 : 0.6));
   if (s.vehicle.has) {
-    wagon(c, 132, horizon + 6 + bob, off, !!s.vehicle.broken);
+    c.save(); c.translate(119, horizon + 7 + bob); c.scale(2, 2);
+    wagon(c, 0, 0, off, !!s.vehicle.broken, s); c.restore();
     // Tailpipe puffs stay behind the wagon. Engine trouble has a visible cue.
     for (let i = 0; i < 3; i++) {
       const p = (t * 7 + i * 4) % 12;
-      grey(c, 130 - p * 2, horizon + 17 - p / 3, 3 + p / 2, 2, 'g25');
+      grey(c, 116 - p * 2, horizon + 34 - p / 3, 3 + p / 2, 2, 'g25');
     }
-    if (s.vehicle.engine < 35 || s.vehicle.broken === 'engine') smoke(c, 171, horizon + 9, t, 25);
+    if (s.vehicle.engine < 35 || s.vehicle.broken === 'engine') smoke(c, 199, horizon + 13, t, 25);
   }
-  else { const n = ZT.State.aliveCount(s); for (let i = 0; i < n; i++) figure(c, 130 + i * 10, horizon + 12 + Math.sin(off + i) * 0.6, off * 1.4 + i, false); }
+  else { c.save(); c.translate(106, 115); c.scale(2, 2); const n = ZT.State.aliveCount(s); for (let i = 0; i < n; i++) figure(c, i * 11, 0, off * 1.4 + i, false); c.restore(); }
+  for (let i = 0; i < 13; i++) {
+    const x = ((i * 29 - off * 1.4) % 377 + 377) % 377 - 25;
+    line(c, x, 159, x + 2, 154); line(c, x + 2, 159, x + 6, 156);
+  }
   weatherFX(c, s.weather, t, opt.reduce);
 };
 
@@ -323,6 +401,9 @@ function barn(c, x, y) {
   px(c, x + 12, y - 8, 6, 8);
   px(c, x + 34, y - 20, 6, 20); // silo
   line(c, x + 34, y - 20, x + 37, y - 24); line(c, x + 37, y - 24, x + 40, y - 20);
+  for (let xx = x + 3; xx < x + 28; xx += 4) px(c, xx, y - 10, 1, 10);
+  c.fillStyle = PAPER; c.fillRect(Math.round(x+12),Math.round(y-8),6,8); rect(c,x+12,y-8,6,8);
+  line(c,x+12,y-8,x+18,y); line(c,x+18,y-8,x+12,y);
 }
 
 // Small integer-pixel wind cycles keep the old bitmap look without shimmering.
@@ -347,22 +428,21 @@ function destinationSign(c, x, y, name, miles, t) {
 scenes.title = function (c, s, t) {
   // horizon with a dead town and a car leaving it
   const horizon = 108;
-  for (let i = 0; i < 40; i++) { const x = hash(i * 3.3) * W, y = hash(i * 7.7) * 60; px(c, x, y, 1, 1); }
-  disc(c, 268, 26, 11); disc(c, 263, 22, 9, PAPER); // crescent
+  nightSky(c,88);
   skyline(c, 21, horizon - 4, 34, 0.85, 'town');
   ground(c, horizon + 2, t * 40);
-  for (let x = -32; x < W; x += 32) px(c, x + 32 - ((t * 40) % 32), horizon + 20, 14, 2);
-  wagon(c, 200, horizon + 4, t * 6, false);
-  for (let i = 0; i < 7; i++) figure(c, 10 + i * 16, horizon + 4 + (i % 2), t * 3 + i, true);
-  weatherFX(c, 'cold', t, false);
+  c.save();c.translate(204,112);c.scale(2,2);wagon(c,0,0,t*6,false);c.restore();
+  for (let i = 0; i < 7; i++) {c.save();c.translate(8+i*25,horizon+5+(i%2)*8);c.scale(2,2);figure(c,0,0,t+i,true);c.restore();}
+  // Sagging fence and a boarded warning make the title an abandoned roadside.
+  line(c,0,100,93,100);for(let x=4;x<91;x+=16)px(c,x,96,2,18);
+  rect(c,19,77,66,18);plate(c,'ROAD CLOSED',24,83);
 };
 
 /* generic composers used by event art keys */
 function sceneRoadWith(drawer) {
   return function (c, s, t, opt) {
     const horizon = 92;
-    if (ZT.region(s).terrain === 'mountain') mountains(c, 5, horizon - 4, 40);
-    else skyline(c, 13, horizon - 4, 16, 0.4, 'town');
+    landscape(c, s, horizon - 8, 0);
     ground(c, horizon + 6, 0);
     c.fillStyle = PAPER; c.fillRect(0, horizon + 7, W, 35);
     road(c, horizon + 6);
@@ -552,16 +632,6 @@ scenes.ash = sceneRoadWith(function (c, s, t, hz) {
   for (let i = 0; i < 80; i++) { const x = (hash(i * 2.7) * W + Math.sin(t + i) * 8) % W, y = (hash(i * 5.3) * H + t * 12) % H; px(c, x, y, 1, 1); }
   if (s.vehicle.has) wagon(c, 140, hz + 6, t * 3, false);
 });
-scenes.hood = sceneRoadWith(function (c, s, t, hz) {
-  wagon(c, 120, hz + 2, 0, true);
-  for (let i = 0; i < 22; i++) { const p = (t * 24 + i * 9) % 50; px(c, 158 + Math.sin(i + t * 2) * 8, hz - p, 2, 2); }
-  figure(c, 108, hz + 4, t, false);
-});
-scenes.tire = sceneRoadWith(function (c, s, t, hz) {
-  wagon(c, 120, hz + 4, 0, false);
-  disc(c, 128, hz + 20, 4); c.fillStyle = PAPER; disc(c, 128, hz + 21, 2); c.fillStyle = INK;
-  figure(c, 112, hz + 6, t, false);
-});
 scenes.underneath = sceneRoadWith(function (c, s, t, hz) {
   wagon(c, 120, hz + 2, 0, false);
   px(c, 100, hz + 20, 22, 3); // legs sticking out
@@ -586,15 +656,6 @@ scenes.walking = sceneRoadWith(function (c, s, t, hz) {
   const n = Math.max(1, ZT.State.aliveCount(s));
   for (let i = 0; i < n; i++) figure(c, 110 + i * 16, hz + 6, t * 3 + i, false);
 });
-scenes.sick = function (c, s, t, opt) {
-  // interior: someone lying, someone kneeling
-  px(c, 0, 120, W, 2);
-  px(c, 80, 108, 160, 12); grey(c, 80, 110, 160, 8, 'g25');
-  px(c, 96, 100, 20, 8);
-  figure(c, 230, 96, t * 0.8, false);
-  for (let i = 0; i < 20; i++) px(c, 20 + i * 15, 30 + Math.sin(i + t) * 3, 1, 1);
-  vignetteScanlines(c, false);
-};
 scenes.sickbad = function (c, s, t, opt) {
   scenes.sick(c, s, t, opt);
   grey(c, 0, 0, W, H, 'g25');
@@ -668,9 +729,9 @@ function zScene(n, opts) {
   return sceneRoadWith(function (c, s, t, hz) {
     if ((opts || {}).car !== false && s.vehicle.has) wagon(c, 24, hz + 6, t * 2, false);
     for (let i = 0; i < n; i++) {
-      const x = 110 + (i % 8) * 24 + Math.sin(t * 0.6 + i) * 2;
-      const y = hz + 2 + Math.floor(i / 8) * 12;
-      figure(c, x, y, t * 1.4 + i, true);
+      const x = 104 + (i % 7) * 29 + Math.round(Math.sin(t * 0.6 + i) * 2);
+      const y = hz + 5 + Math.floor(i / 7) * 24 + Math.floor(hash(i + 5) * 5);
+      c.save();c.translate(x,y);c.scale(2,2);figure(c,0,0,t*1.1+i,true);c.restore();
     }
   });
 }
@@ -686,9 +747,10 @@ scenes.zhorde = function (c, s, t, opt) {
   const hz = 92;
   skyline(c, 17, hz - 4, 14, 0.4, 'town');
   ground(c, hz + 6);
-  for (let row = 0; row < 5; row++) for (let i = 0; i < 22; i++) {
-    const x = i * 15 + (row % 2) * 7 + Math.sin(t * 0.5 + i + row) * 1.5;
-    figure(c, x, hz + 4 + row * 10, t * 1.2 + i + row, true);
+  for (let row = 0; row < 3; row++) for (let i = 0; i < [25,20,13][row]; i++) {
+    const x = i * [13,17,26][row] - 4 + Math.round(hash(i*3+row)*5+Math.sin(t*0.5+i+row)*2);
+    const y = hz + row*17 + Math.floor(hash(i+row*7)*5), scale=row===2?2:1;
+    c.save();c.translate(x,y);c.scale(scale,scale);figure(c,0,0,t*0.8+i+row,true);c.restore();
   }
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
@@ -725,8 +787,7 @@ function parkedArrival(c, s, t, opt, x, y) {
   }
 }
 function stopBackdrop(c, s) {
-  mountains(c, 44, 75, 20);
-  trees(c, 88, 94, 0.7);
+  landscape(c, s, 86, 0);
   ground(c, 108, 0);
   c.fillStyle = PAPER; c.fillRect(0, 118, W, 35);
   road(c, 117);
@@ -803,14 +864,16 @@ function campBuilding(c, s, t) {
   const x = 222, y = 101, w = 78, h = 34;
   const terrain = ZT.region(s).terrain;
   const cabin = terrain === 'mountain' || terrain === 'hills' || terrain === 'river';
-  c.fillStyle = PAPER; c.fillRect(x - 3, y - h - 16, w + 6, h + 17);
+  c.fillStyle = PAPER; c.fillRect(x, y - h, w, h);
   // Cabin in wooded country; low roadside shelter on the plains and desert.
   if (cabin) {
+    shape(c,[[x-4,y-h],[x+w/2,y-h-14],[x+w+4,y-h]],PAPER);
     px(c, x + 53, y - h - 17, 6, 17);
     smoke(c, x + 55, y - h - 20, t * 0.6, 27);
     line(c, x - 4, y - h, x + w / 2, y - h - 14);
     line(c, x + w / 2, y - h - 14, x + w + 4, y - h);
   } else {
+    shape(c,[[x-4,y-h-4],[x+w+4,y-h-4],[x+w,y-h],[x,y-h]],PAPER);
     line(c, x - 4, y - h - 4, x + w + 4, y - h - 4);
     line(c, x - 4, y - h - 4, x, y - h);
     line(c, x + w + 4, y - h - 4, x + w, y - h);
@@ -833,9 +896,17 @@ function campBuilding(c, s, t) {
     px(c, x - 7 + dx, y - 12 + ripple, 1, 1);
   }
 }
+function nightSky(c, base) {
+  const sky = ZT.Display.mode === 'dark' ? PAPER : INK;
+  const stars = ZT.Display.mode === 'dark' ? INK : PAPER;
+  c.fillStyle=sky;c.fillRect(0,0,W,base);
+  for(let i=0;i<48;i++){const x=Math.round(hash(i*3.3)*W),y=Math.round(hash(i*7.7)*(base-14));c.fillStyle=stars;c.fillRect(x,y,1,1);}
+  disc(c,265,24,12,stars);disc(c,260,20,10,sky);
+  c.fillStyle=stars;c.fillRect(42,22,5,1);c.fillRect(44,20,1,5);
+}
 scenes.camp = function (c, s, t, opt) {
   const hz = 107;
-  for (let i = 0; i < 40; i++) px(c, hash(i * 3.3) * W, hash(i * 7.7) * 52, 1, 1);
+  nightSky(c,81);
   if (['mountain', 'hills'].includes(ZT.region(s).terrain)) mountains(c, 11, 81, 31);
   trees(c, 51, hz, 1.2); ground(c, hz + 2, 0);
   campBuilding(c, s, t);
@@ -847,6 +918,8 @@ scenes.camp = function (c, s, t, opt) {
   line(c, 102, 114, 102 + flap, 147);
   grey(c, 104 + flap, 134, 12, 12, 'g25');
   line(c, 102, 114, 118 + flap, 147);
+  shape(c,[[103,116],[119+flap,146],[137,146]],'g50');
+  line(c,85,136,105,136);line(c,89,131,106,131);
   line(c, 76, 147, 69, 151); line(c, 139, 147, 146, 151);
   windCloth(c, 103, 115, t, 12);
   // A low cooking fire, kettle, and one seated figure per living traveler.
@@ -855,14 +928,10 @@ scenes.camp = function (c, s, t, opt) {
     px(c, 160 + Math.sin(i * 2 + t * 2) * (2 + p * 0.16), 114 - p, 2, 2);
   }
   line(c, 151, 116, 170, 113); line(c, 152, 113, 169, 116);
-  const seats = [[127, 94], [186, 100], [181, 125], [214, 120], [251, 117]];
+  const seats = [[118,89],[182,97],[186,126],[219,119],[267,115]];
   for (let i = 0; i < ZT.State.aliveCount(s); i++) {
     const [x, y] = seats[i];
-    figure(c, x, y, 0, false);
-    // Only the cup/hand shifts; seated survivors do not walk in place.
-    const lift = Math.round(Math.max(0, Math.sin(t * 0.65 + i)) * 2);
-    line(c, x + 5, y + 7, x + 9, y + 7 - lift);
-    rect(c, x + 8, y + 5 - lift, 3, 3);
+    traveler(c,x,y,'sit',t,i);
   }
   rect(c, 205, 136, 34, 9); px(c, 208, 137, 1, 7);
   line(c, 149, 117, 161, 89); line(c, 161, 89, 174, 117);
@@ -870,16 +939,157 @@ scenes.camp = function (c, s, t, opt) {
   line(c, 161, 89, 161 + kettle, 99);
   px(c, 157 + kettle, 101, 9, 6); circle(c, 161 + kettle, 101, 4);
   smoke(c, 160 + kettle, 95, t * 0.7, 32);
+  // A lantern, stacked firewood, and folded bedding ground the camp equipment.
+  rect(c,29,134,9,12);rect(c,31,130,5,4);px(c,32,137,3,5);
+  for(let i=0;i<3;i++){rect(c,43+i*3,143-i*4,24,4);circle(c,66+i*3,145-i*4,2);}
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
-const originalHood = scenes.hood;
-scenes.hood = function (c, s, t, opt) {
-  originalHood(c, s, t, opt);
-  rect(c, 182, 113, 22, 12); rect(c, 188, 109, 10, 4);
-  px(c, 191, 115, 3, 3);
-  figure(c, 170, 94, 0, false);
-  const y = 101 + Math.round(Math.sin(t * 3) * 2);
-  line(c, 170, 99, 161, y); px(c, 159, y - 2, 2, 5); px(c, 157, y - 2, 2, 1);
+/* ---------- close-up trail illustrations ---------- */
+function traveler(c, x, y, pose, t, variant) {
+  c.save(); c.translate(Math.round(x), Math.round(y));
+  const kneel = pose === 'repair', seated = pose === 'sit', head = kneel ? 8 : 0;
+  grey(c, -2, 29, 20, 2, 'g25');
+  px(c, 4, head, 6, 7); px(c, 3, head + 1, 8, 3);
+  c.fillStyle = PAPER; c.fillRect(6,head+3,4,3);
+  px(c, 9, head + 3, 2, 1); px(c, 4, head - 1, 6, 2);
+  if (variant % 2 === 0) { px(c, 3, head, 10, 1); px(c, 4, head - 2, 6, 2); }
+  shape(c, [[3,head+8],[10,head+8],[12,head+18],[1,head+18]], INK);
+  c.fillStyle = PAPER; c.fillRect(5,head+9,2,7);
+  if (kneel) {
+    px(c, 3, 25, 10, 3); px(c, 10, 27, 7, 2);
+    const reach = Math.round(Math.sin(t * 2.4) * 2);
+    line(c, 11, 18, 17, 23 + reach); px(c, 17, 22 + reach, 5, 2);
+    line(c, 21, 19 + reach, 21, 27 + reach); px(c, 19, 19 + reach, 4, 1);
+  } else if (seated) {
+    px(c, 2, 18, 15, 4); px(c, 14, 21, 3, 7); px(c, 12, 27, 7, 2);
+    px(c, 0, 23, 11, 2); px(c, 1, 25, 2, 5);
+    line(c, 11, 10, 13, 15); line(c, 13, 15, 17, 13);
+    const sip = Math.round(Math.max(0, Math.sin(t * 0.8 + variant)) * 2);
+    c.fillStyle = PAPER; c.fillRect(16,9-sip,4,5); rect(c,16,9-sip,4,5); px(c,20,10-sip,1,3);
+  } else {
+    px(c, 2, 18, 4, 9); px(c, 8, 18, 4, 9); px(c, 1, 27, 6, 2); px(c, 8, 27, 6, 2);
+    line(c, 1, 9, -1, 19); line(c, 11, 9, 14, 16);
+    if (pose === 'drink') { rect(c, 12, 12, 4, 6); px(c, 13, 10, 2, 2); }
+    else px(c, 13, 16, 2, 4);
+  }
+  c.restore();
+}
+function toolbox(c, x, y) {
+  c.fillStyle = PAPER; c.fillRect(x,y,24,13); rect(c,x,y,24,13); rect(c,x+7,y-4,10,4);
+  px(c,x+1,y+4,22,1); px(c,x+10,y+3,4,4); grey(c,x+2,y+7,20,4,'g25');
+}
+function closeWagon(c, s, x, y, scale, hood) {
+  if (!s.vehicle.has) return;
+  c.save(); c.translate(x,y); c.scale(scale,scale); wagon(c,0,0,0,!!hood,s); c.restore();
+}
+function repairScene(c, s, t, opt, hot) {
+  landscape(c,s,83,0); ground(c,108,0);
+  if (hot) {
+    c.fillStyle=PAPER;c.fillRect(239,66,71,23);
+    rect(c,239,66,71,23); plate(c,'COLD DRINKS',243,70); plate(c,'1/4 MI',255,80); px(c,272,89,2,18);
+  }
+  grey(c,35,131,178,9,'g25');
+  if (s.vehicle.has) {
+    closeWagon(c,s,66,84,3,false);
+    // Near wheel is off; axle, jack, and detached tire make the repair legible.
+    disc(c,93,135,12,PAPER); disc(c,93,135,3); line(c,108,131,108,144);
+    line(c,102,145,115,145); line(c,104,140,112,132); line(c,104,132,112,140);
+    disc(c,44,135,13); disc(c,44,135,8,PAPER); disc(c,44,135,3);
+    for (let i=0;i<4;i++) { const a=i*Math.PI/2; line(c,44+Math.cos(a)*4,135+Math.sin(a)*4,44+Math.cos(a)*7,135+Math.sin(a)*7); }
+  }
+  const n=ZT.State.aliveCount(s);
+  if (n) traveler(c,70,119,'repair',t,0);
+  for (let i=1;i<n;i++) traveler(c,201+(i-1)*27,106+(i%2)*8,'drink',t,i);
+  toolbox(c,139,143); line(c,173,152,188,146); px(c,185,145,5,2);
+  // Heat is a restrained shimmer above the empty shoulder, away from faces and text.
+  if (hot) for (let i=0;i<4;i++) { const x=16+i*55+Math.round(Math.sin(t*1.2+i)*3); px(c,x,101+(i%2)*4,11,1); }
+  if (!hot) weatherFX(c,s.weather,t,opt&&opt.reduce);
+}
+scenes.tire = (c,s,t,opt) => repairScene(c,s,t,opt,s.weather==='heat');
+scenes.summer_flat = (c,s,t,opt) => repairScene(c,s,t,opt,true);
+scenes.hood = function(c,s,t,opt) {
+  landscape(c,s,82,0); ground(c,112,0);
+  closeWagon(c,s,52,85,3,true);
+  if (s.vehicle.has) smoke(c,177,98,t,43);
+  const n=ZT.State.aliveCount(s);
+  for(let i=0;i<n;i++) traveler(c,201+i*21,107-(i%2)*5,i===0?'repair':'stand',t,i);
+  toolbox(c,184,143); rect(c,27,136,13,20); rect(c,30,132,7,4); px(c,30,141,7,2);
+  weatherFX(c,s.weather,t,opt&&opt.reduce);
+};
+
+function farmStand(c,s,t,opt,ice) {
+  landscape(c,s,83,0); ground(c,109,0);
+  // Timber walls and a deep awning give the counter a clear foreground silhouette.
+  c.fillStyle=PAPER; c.fillRect(95,49,159,60); rect(c,95,49,159,60);
+  for(let x=98;x<252;x+=7) px(c,x,52,1,55);
+  shape(c,[[87,51],[104,34],[242,34],[263,51]],INK);
+  for(let x=95;x<254;x+=12) shape(c,[[x,50],[x+8,37],[x+13,37],[x+8,50]],PAPER);
+  px(c,91,51,169,4); px(c,94,54,3,55); px(c,253,54,3,55);
+  c.fillStyle=PAPER; c.fillRect(110,60,110,29); rect(c,110,60,110,29);
+  px(c,110,87,112,4); grey(c,111,92,108,15,'g25');
+  for(let x=118;x<213;x+=16) { rect(c,x,75,5,11); px(c,x+1,73,3,2); }
+  c.fillStyle=PAPER;c.fillRect(126,17,99,15);rect(c,126,17,99,15);px(c,138,32,2,3);px(c,210,32,2,3);
+  plate(c,ice?'ICE / COLD WATER':'COLD DRINKS',174,23,'c');
+  // Propane refrigerator, hand-painted board, cooler, and hanging pennant.
+  c.fillStyle=PAPER;c.fillRect(226,66,23,41);rect(c,226,66,23,41);px(c,226,81,23,1);px(c,230,87,1,8);
+  plate(c,'ICE',230,71);c.fillStyle=PAPER;c.fillRect(31,71,51,31);rect(c,31,71,51,31);plate(c,ice?'ICE':'BEER',37,77);plate(c,'WATER',37,87);
+  line(c,35,102,32,112);line(c,76,102,79,112);
+  rect(c,261,91,38,18);px(c,262,97,36,2);px(c,264,89,32,2);
+  // The owner is behind the counter, distinct from the actual traveler count.
+  figure(c,167,72,0,false); windCloth(c,96,56,t,18);
+  const seats=[[221,120],[249,120],[279,120],[13,120],[40,120]];
+  for(let i=0;i<ZT.State.aliveCount(s);i++) traveler(c,seats[i][0],seats[i][1],'sit',t,i);
+  parkedArrival(c,s,t,opt,115,124);
+  // The foreground road is kept clear; only the cloth and cups animate once parked.
+  if (['rain','snow','storm'].includes(s.weather)) weatherFX(c,s.weather,t,opt&&opt.reduce);
+}
+scenes.cold_drinks=(c,s,t,opt)=>farmStand(c,s,t,opt,false);
+scenes.ice_freezer=(c,s,t,opt)=>farmStand(c,s,t,opt,true);
+scenes.beer_tent=function(c,s,t,opt) {
+  landscape(c,s,83,0); ground(c,110,0);
+  c.fillStyle=PAPER;c.fillRect(89,47,207,62);
+  shape(c,[[83,59],[125,29],[259,29],[303,59]],INK);
+  for(let x=105;x<280;x+=25) shape(c,[[x,57],[x+11,32],[x+22,32],[x+17,57]],PAPER);
+  px(c,86,58,215,4);px(c,93,61,3,47);px(c,289,61,3,47);
+  plate(c,'COLD ONES',196,42,'c');
+  grey(c,98,64,188,43,'g50');
+  for(let i=0;i<9;i++) { c.save();c.translate(107+i*20,77+(i%2)*5);figure(c,0,0,t*0.8+i,true);c.restore(); }
+  rect(c,226,90,48,15);plate(c,'BEER',239,95);
+  for(let x=84;x<303;x+=13) {px(c,x,99,2,20);line(c,x,103,x+13,115);line(c,x,115,x+13,103);} px(c,84,102,220,2);
+  line(c,33,31,300,18);
+  for(let i=0;i<13;i++) {const x=38+i*20,y=31-i;shape(c,[[x,y],[x+10,y],[x+5,y+7+Math.round(Math.sin(t*1.3+i))]],INK);}
+  px(c,36,42,3,64);rect(c,12,44,52,25);plate(c,'COUNTY',22,49);plate(c,'FAIR',27,59);
+  parkedArrival(c,s,t,opt,49,126);
+  c.save();c.translate(250,121);c.scale(2,2);figure(c,0,0,t*0.8,true);c.restore();
+  weatherFX(c,s.weather,t,opt&&opt.reduce);
+};
+scenes.sprinkler=function(c,s,t,opt) {
+  landscape(c,s,83,0);ground(c,107,0);
+  for(let i=0;i<12;i++) {const x=i*29;line(c,x,157,x+61,109);}
+  for(let x=90;x<302;x+=35) {line(c,x,92,x+17,82);line(c,x+17,82,x+35,92);px(c,x,92,35,2);}
+  for(const x of [99,187,284]) {line(c,x,94,x-9,121);line(c,x,94,x+9,121);disc(c,x-9,123,3);disc(c,x+9,123,3);}
+  const angle=-1.6+Math.sin(t*0.5)*0.7;
+  for(let i=0;i<25;i++) {const p=i/24; const x=188+Math.cos(angle)*p*95,y=88+Math.sin(angle)*p*60+p*p*33;px(c,x,y,1,2);}
+  for(let i=0;i<3;i++){c.save();c.translate(180+i*24+Math.round(Math.sin(t*0.5)*6),120);c.scale(2,2);figure(c,0,0,t+i,true);c.restore();}
+  closeWagon(c,s,12,112,2,false);
+  weatherFX(c,s.weather,t,opt&&opt.reduce);
+};
+
+scenes.sick=function(c,s,t,opt) {
+  // A close view of the bedroll replaces the anonymous black rectangle.
+  landscape(c,s,77,0);ground(c,112,0);
+  line(c,12,16,12,118);line(c,12,16,291,34);line(c,291,34,304,118);
+  shape(c,[[12,16],[291,34],[259,53],[32,36]],'g25');
+  grey(c,30,130,160,12,'g25');rect(c,42,110,133,22);px(c,45,132,3,14);px(c,165,132,3,14);
+  c.fillStyle=PAPER;c.fillRect(45,111,126,18);disc(c,60,104,7);disc(c,62,106,4,PAPER);
+  shape(c,[[75,104],[115,101],[143,110],[170,114],[170,129],[71,129]],INK);
+  shape(c,[[76,105],[114,103],[144,113],[170,116],[170,121],[77,115]],'g25');
+  for(let x=82;x<162;x+=14){c.fillStyle=PAPER;c.fillRect(x,116,1,10);}
+  px(c,54,104,7,1);
+  if(ZT.State.aliveCount(s)>1) {c.save();c.translate(185,88);c.scale(2,2);traveler(c,0,0,'repair',t,1);c.restore();}
+  toolbox(c,235,128);c.fillStyle=PAPER;c.fillRect(244,132,7,2);c.fillRect(247,130,2,6);
+  rect(c,216,136,8,12);px(c,218,133,4,3);
+  weatherFX(c,s.weather,t,opt&&opt.reduce);
 };
 
 /* ---------- the map ----------
