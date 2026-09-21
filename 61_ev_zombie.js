@@ -6,6 +6,34 @@ const someone = (s) => X.someone(s);
 const T = (s) => ZT.Travel.threat(s);
 
 ZT.Events.add([
+{
+  id: 'z_midwest_beer_tent', cat: 'zombie', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'zrest',
+  text: 'The county fair beer tent promises COLD ONES. A dozen figures lean against the fence in the shade. One turns toward you with half a face. The beer garden has a very relaxed admissions policy.',
+  choices: [
+    { text: 'Slip around the back for sealed supplies', hint: 'half a day; fatigue +6; loot or injury',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 6);
+        if (ZT.roll(s, X.p(s, 0.55, 'scout', 0.2))) { X.give(s, c, 'goods', 1); X.give(s, c, 'food', 8); return 'Unopened cans and a box of pretzels behind the concession stand. The cans are warm. They will still trade, which is the kindest available thing to say about them.'; }
+        const m = someone(s); X.injure(s, c, m, 12); X.noise(s, c, 10); return `${m.name} catches a sleeve on the fence as the crowd turns. You get clear with a cut arm and no refreshments.`; } },
+    { text: 'Shoot a path to the concession stand', hint: '10 rounds; noise +22; horde +3; supplies', show: (s) => s.inv.ammo >= 10,
+      do(s, c) { X.shots(s, c, 10); X.noise(s, c, 22); X.horde(s, c, 3); X.give(s, c, 'goods', 2); X.give(s, c, 'food', 12); return 'You clear the fence and empty the stand. A fair amount of ammunition for warm beer and pretzels. The noise has advertised that concessions are open again.'; } },
+    { text: 'Keep your distance and move on', hint: 'no cost',
+      do() { return 'The sign also promises LIVE MUSIC. You have doubts about both words.'; } },
+  ],
+},
+{
+  id: 'z_midwest_sprinkler', cat: 'zombie', regions: ['missouri', 'platte', 'sandhills'], weight: 4, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'field',
+  text: 'An irrigation sprinkler sweeps across the road. Three dead people follow it back and forth, bumping into each other when it reverses. For once, someone else looks worse in the heat.',
+  choices: [
+    { text: 'Wait for them to follow the spray away', hint: 'half a day; fatigue +3; quiet passage',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 3); return 'They follow the water into the field. You pass quietly. The sprinkler has done more traffic control than the county all week.'; } },
+    { text: 'Throw a can down the ditch and hurry past', hint: '1 lb food; noise +8; fatigue +5', show: (s) => s.inv.food >= 1,
+      do(s, c) { X.take(s, c, 'food', 1); X.noise(s, c, 8); X.fatigueAll(s, c, 5); return 'The can rattles down the culvert and the three heads turn. You hurry through the gap. Nobody votes to retrieve lunch.'; } },
+    { text: 'Try to squeeze past immediately', hint: 'injury risk; noise +5',
+      do(s, c) { X.noise(s, c, 5); if (ZT.roll(s, 0.4)) { const m = someone(s); X.injure(s, c, m, 15); X.fatigueAll(s, c, 8); return `${m.name} gets caught against the fence as the spray turns back. You pull free with torn clothing and a nasty scrape.`; } return 'You pass while all three are facing the water. A rare case of Nebraska irrigation improving road safety.'; } },
+  ],
+},
 /* Local encounters for the stretches with the least regional content. */
 {
   id: 'z_missouri_silo_shadow', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zsilo',

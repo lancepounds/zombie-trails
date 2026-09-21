@@ -1,0 +1,87 @@
+
+=== WIN RATE (n=40 per cell) ===
+config                           win%    day   mile   surv   score
+easy/timid/balanced              100%    133   1332   4.78    1781
+easy/timid/food                  100%    135   1331   4.50    1770
+easy/timid/gear                  100%    138   1328   4.70    1779
+easy/timid/reckless              100%    149   1326   4.40    1750
+easy/bold/balanced               100%    113   1405   4.78    1825
+easy/bold/food                   100%    118   1395   4.65    1771
+easy/bold/gear                   100%    130   1397   4.90    1769
+easy/bold/reckless               100%    145   1403   4.45    1738
+easy/random/balanced             100%    140   1447   4.63    1783
+easy/random/food                  98%    147   1476   4.33    1762
+easy/random/gear                 100%    159   1450   4.33    1768
+easy/random/reckless             100%    173   1445   4.35    1743
+normal/timid/balanced             40%    166   1306   1.15     842
+normal/timid/food                 65%    178   1320   1.32    2017
+normal/timid/gear                 53%    195   1320   1.15    1987
+normal/timid/reckless             83%    190   1328   1.55    2227
+normal/bold/balanced              78%    151   1391   2.25    2453
+normal/bold/food                  85%    150   1395   2.45    2426
+normal/bold/gear                  80%    179   1397   2.05    2388
+normal/bold/reckless              73%    158   1385   1.55    2178
+normal/random/balanced            43%    173   1373   1.00     813
+normal/random/food                33%    173   1234   0.93     802
+normal/random/gear                33%    186   1087   0.75     709
+normal/random/reckless            60%    196   1397   1.15    2006
+hard/timid/balanced               43%    178   1155   0.80    1128
+hard/timid/food                   43%    184   1171   0.88    1184
+hard/timid/gear                   35%    187   1011   0.68    1101
+hard/timid/reckless               45%    159   1297   0.57    1158
+hard/bold/balanced                65%    173   1391   1.15    3075
+hard/bold/food                    55%    154   1380   1.40    2910
+hard/bold/gear                    57%    175   1385   1.13    2982
+hard/bold/reckless                65%    173   1390   1.00    3134
+hard/random/balanced              28%    168   1006   0.42    1037
+hard/random/food                  13%    158    952   0.28     960
+hard/random/gear                  15%    157    906   0.30     944
+hard/random/reckless              45%    187   1354   0.60    1164
+nightmare/timid/balanced           3%    124    777   0.05    1156
+nightmare/timid/food               0%    133    771   0.00    1080
+nightmare/timid/gear               0%    137    717   0.00    1026
+nightmare/timid/reckless          15%    134    881   0.17    1066
+nightmare/bold/balanced            3%    146    892   0.10    1138
+nightmare/bold/food                3%    117    748   0.05    1022
+nightmare/bold/gear                0%    133    699   0.00    1004
+nightmare/bold/reckless           20%    141    931   0.23    1076
+nightmare/random/balanced          3%    136    728   0.03    1052
+nightmare/random/food              0%    123    622   0.00     910
+nightmare/random/gear              3%    151    659   0.05     982
+nightmare/random/reckless         15%    159   1069   0.28    1140
+
+=== BY DIFFICULTY ===
+easy         99.8% of 480
+normal       60.2% of 480
+hard         42.3% of 480
+nightmare    5.2% of 480
+
+=== DEATHS BY CAUSE (all runs) ===
+  infection      4310
+  exposure       233
+  exhaustion     39
+  gunshot        19
+  injuries       13
+  illness        3
+  heat           1
+
+=== RESOURCE AT ZERO AT END ===
+  parts      16%
+  medicine   14%
+  goods      12%
+  tools      8%
+  ammo       0%
+  fuel       0%
+
+crashes: 0
+
+=== ROADS TAKEN ===
+  ogallala>chimney         326
+  ogallala>cheyenne        1590
+  granger>montpelier       748
+  granger>ogden            773
+  forthall>arco            155
+  forthall>twinfalls       1017
+shortest route 1320 mi | longest 1550 mi
+events defined: 190 | never fired: 1 v_siphon_own
+choices defined: 534 | never taken: 13 z_missouri_silo_shadow:2 z_missouri_ditch_hands:1 v_siphon_own:0 v_siphon_own:1 h_missouri_wet_boots:2 h_morale_low:0 h_morale_low:1 h_morale_low:2 h_ration_grumble:0 h_ration_grumble:2 story_red_camp:2 story_red_camp:3 story_red_return:1

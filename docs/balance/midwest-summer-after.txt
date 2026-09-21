@@ -1,0 +1,96 @@
+
+> zombie-trails@1.6.0 test
+> node test-party.js && node test-map.js && node test-story.js && node test-content.js && node test-midwest.js && node test-audio.js && node sim.js 40
+
+Party checks passed: 1–5 travelers, six traits, bonus caps, inactive helpers, food use, estimates, old saves, and both themes.
+Map checks passed: all 289 stop pairs, branches, partial legs, walking, read-only previews, and labels at every zoom.
+Story branches, delayed consequences, save/load, forecasts, and built script passed.
+Regional content checks passed: 20 events, local eligibility, paid choices, artwork, solo/on-foot play, saves, and 27680 resolved outcomes.
+Midwest checks passed: 10 random encounters + 1 linked stop; weather, regions, resource gates, repair branches, travel effects, saves, and 9024 outcomes.
+Audio checks passed: gesture gating, scheduled notes, mute, ambient toggles, hidden tabs, all cues, and unsupported audio.
+
+=== WIN RATE (n=40 per cell) ===
+config                           win%    day   mile   surv   score
+easy/timid/balanced              100%    132   1328   4.58    1771
+easy/timid/food                  100%    137   1332   4.53    1749
+easy/timid/gear                  100%    143   1328   4.60    1748
+easy/timid/reckless              100%    149   1328   4.35    1711
+easy/bold/balanced               100%    115   1399   4.80    1766
+easy/bold/food                   100%    117   1395   4.72    1799
+easy/bold/gear                   100%    127   1393   4.90    1761
+easy/bold/reckless               100%    141   1406   4.28    1670
+easy/random/balanced             100%    140   1427   4.45    1783
+easy/random/food                  98%    144   1436   4.42    1777
+easy/random/gear                 100%    159   1432   4.53    1797
+easy/random/reckless             100%    169   1439   4.38    1725
+normal/timid/balanced             43%    167   1306   0.97     836
+normal/timid/food                 60%    186   1320   1.43    2017
+normal/timid/gear                 50%    196   1320   1.13    1901
+normal/timid/reckless             73%    177   1326   1.32    2192
+normal/bold/balanced              85%    153   1391   2.40    2492
+normal/bold/food                  85%    156   1395   2.33    2318
+normal/bold/gear                  68%    182   1393   1.48    2173
+normal/bold/reckless              68%    157   1385   1.30    2156
+normal/random/balanced            45%    172   1377   1.18     844
+normal/random/food                30%    164   1040   0.70     730
+normal/random/gear                23%    181   1112   0.47     716
+normal/random/reckless            60%    189   1419   1.13    2006
+hard/timid/balanced               48%    178   1307   0.78    1241
+hard/timid/food                   53%    170   1312   1.20    3125
+hard/timid/gear                   33%    187   1014   0.47    1122
+hard/timid/reckless               57%    158   1320   0.85    2927
+hard/bold/balanced                65%    170   1395   1.13    2895
+hard/bold/food                    53%    165   1385   1.27    2835
+hard/bold/gear                    50%    174   1370   1.13    2805
+hard/bold/reckless                70%    172   1397   1.13    3126
+hard/random/balanced              28%    168   1045   0.40    1037
+hard/random/food                  25%    178   1046   0.40    1028
+hard/random/gear                  18%    152    894   0.30     939
+hard/random/reckless              38%    165   1344   0.47    1137
+nightmare/timid/balanced           5%    119    752   0.07    1062
+nightmare/timid/food               3%    139    740   0.05    1042
+nightmare/timid/gear               0%    127    677   0.00    1008
+nightmare/timid/reckless          18%    141    760   0.28    1064
+nightmare/bold/balanced            0%    134    842   0.00    1132
+nightmare/bold/food                3%    131    785   0.07    1030
+nightmare/bold/gear                0%    133    696   0.00    1036
+nightmare/bold/reckless           13%    151    964   0.15    1108
+nightmare/random/balanced          3%    146    728   0.03    1052
+nightmare/random/food              0%    122    617   0.00     906
+nightmare/random/gear              3%    139    654   0.03     964
+nightmare/random/reckless         10%    152    976   0.10    1124
+
+=== BY DIFFICULTY ===
+easy         99.8% of 480
+normal       57.3% of 480
+hard         44.6% of 480
+nightmare    4.6% of 480
+
+=== DEATHS BY CAUSE (all runs) ===
+  infection      4268
+  exposure       246
+  exhaustion     45
+  gunshot        22
+  injuries       16
+  illness        5
+
+=== RESOURCE AT ZERO AT END ===
+  parts      17%
+  medicine   14%
+  goods      13%
+  tools      9%
+  fuel       0%
+  ammo       0%
+
+crashes: 0
+
+=== ROADS TAKEN ===
+  ogallala>chimney         302
+  ogallala>cheyenne        1614
+  granger>montpelier       734
+  granger>ogden            784
+  forthall>arco            170
+  forthall>twinfalls       1001
+shortest route 1320 mi | longest 1550 mi
+events defined: 201 | never fired: 1 v_siphon_own
+choices defined: 568 | never taken: 14 road_midwest_heat_buckle:2 z_midwest_beer_tent:0 z_midwest_sprinkler:2 z_missouri_silo_shadow:2 z_missouri_ditch_hands:1 z_owyhee_mailboxes:1 v_siphon_own:0 v_siphon_own:1 h_midwest_heat_headache:0 h_ration_grumble:0 h_ration_grumble:2 story_red_camp:2 story_red_camp:3 story_red_return:1

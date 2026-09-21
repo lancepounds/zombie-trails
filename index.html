@@ -1955,6 +1955,33 @@ const X = ZT.X;
 const someone = (s) => X.someone(s);
 
 ZT.Events.add([
+/* ================= MIDWEST'S LAST DAYS OF SUMMER ================= */
+{
+  id: 'road_midwest_heat_buckle', cat: 'road', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'heat',
+  text: 'The heat has pushed a slab of pavement up like a trapdoor. Beyond it, the highway shimmers. Nebraska has added a speed bump without consulting anyone.',
+  choices: [
+    { text: 'Go around carefully on the gravel', hint: 'half a day; +4 fatigue',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 4); return 'The gravel shoulder gets you around the slab. The sun follows you the entire way, providing supervision nobody requested.'; } },
+    { text: 'Cross the slab at speed', hint: 'tires -12; body -8; noise +8', show: (s) => s.vehicle.has,
+      do(s, c) { X.wear(s, c, 'tires', 12); X.wear(s, c, 'body', 8); X.noise(s, c, 8); return 'The wagon lands with a noise that settles the argument about whether that was a good idea.'; } },
+    { text: 'Climb over and keep walking', hint: '+10 fatigue; morale -3', show: (s) => !s.vehicle.has,
+      do(s, c) { X.fatigueAll(s, c, 10); X.morale(s, c, -3); return 'The pavement is too hot to touch. The packs are heavy. A car would be nice, even one with terrible suspension.'; } },
+  ],
+},
+{
+  id: 'road_midwest_ice_freezer', cat: 'road', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 4, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'station',
+  text: 'A farm store still has a generator running its ice freezer. The owner offers a bag of ice and a round of cold bottled water. The price is written on cardboard. It has been crossed out twice.',
+  choices: [
+    { text: 'Trade for ice and cold water', hint: '1 trade lot; half a day; fatigue -12; morale +5', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.delay(s, c, 0.5); X.fatigueAll(s, c, -12); X.morale(s, c, 5); return 'Cold water, a wet cloth on the neck, and ice rattling in a cup. For a little while, the biggest problem is drinking too fast.'; } },
+    { text: 'Haul stock in exchange for drinks', hint: 'half a day; fatigue +6; morale +6',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 6); X.morale(s, c, 6); return 'The owner trades cold drinks for moving stock into the shade. It is honest work in dishonest weather. You leave refreshed and thoroughly tired.'; } },
+    { text: 'Keep going', hint: 'no cost',
+      do() { return 'The freezer lid closes behind you with a very expensive-sounding thump.'; } },
+  ],
+},
 /* ================= GENERAL ROAD ================= */
 {
   id: 'road_last_bite_diner', cat: 'road', weight: 4, art: 'diner', cool: 30,
@@ -2796,6 +2823,34 @@ const someone = (s) => X.someone(s);
 const T = (s) => ZT.Travel.threat(s);
 
 ZT.Events.add([
+{
+  id: 'z_midwest_beer_tent', cat: 'zombie', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'zrest',
+  text: 'The county fair beer tent promises COLD ONES. A dozen figures lean against the fence in the shade. One turns toward you with half a face. The beer garden has a very relaxed admissions policy.',
+  choices: [
+    { text: 'Slip around the back for sealed supplies', hint: 'half a day; fatigue +6; loot or injury',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 6);
+        if (ZT.roll(s, X.p(s, 0.55, 'scout', 0.2))) { X.give(s, c, 'goods', 1); X.give(s, c, 'food', 8); return 'Unopened cans and a box of pretzels behind the concession stand. The cans are warm. They will still trade, which is the kindest available thing to say about them.'; }
+        const m = someone(s); X.injure(s, c, m, 12); X.noise(s, c, 10); return `${m.name} catches a sleeve on the fence as the crowd turns. You get clear with a cut arm and no refreshments.`; } },
+    { text: 'Shoot a path to the concession stand', hint: '10 rounds; noise +22; horde +3; supplies', show: (s) => s.inv.ammo >= 10,
+      do(s, c) { X.shots(s, c, 10); X.noise(s, c, 22); X.horde(s, c, 3); X.give(s, c, 'goods', 2); X.give(s, c, 'food', 12); return 'You clear the fence and empty the stand. A fair amount of ammunition for warm beer and pretzels. The noise has advertised that concessions are open again.'; } },
+    { text: 'Keep your distance and move on', hint: 'no cost',
+      do() { return 'The sign also promises LIVE MUSIC. You have doubts about both words.'; } },
+  ],
+},
+{
+  id: 'z_midwest_sprinkler', cat: 'zombie', regions: ['missouri', 'platte', 'sandhills'], weight: 4, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'field',
+  text: 'An irrigation sprinkler sweeps across the road. Three dead people follow it back and forth, bumping into each other when it reverses. For once, someone else looks worse in the heat.',
+  choices: [
+    { text: 'Wait for them to follow the spray away', hint: 'half a day; fatigue +3; quiet passage',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 3); return 'They follow the water into the field. You pass quietly. The sprinkler has done more traffic control than the county all week.'; } },
+    { text: 'Throw a can down the ditch and hurry past', hint: '1 lb food; noise +8; fatigue +5', show: (s) => s.inv.food >= 1,
+      do(s, c) { X.take(s, c, 'food', 1); X.noise(s, c, 8); X.fatigueAll(s, c, 5); return 'The can rattles down the culvert and the three heads turn. You hurry through the gap. Nobody votes to retrieve lunch.'; } },
+    { text: 'Try to squeeze past immediately', hint: 'injury risk; noise +5',
+      do(s, c) { X.noise(s, c, 5); if (ZT.roll(s, 0.4)) { const m = someone(s); X.injure(s, c, m, 15); X.fatigueAll(s, c, 8); return `${m.name} gets caught against the fence as the spray turns back. You pull free with torn clothing and a nasty scrape.`; } return 'You pass while all three are facing the water. A rare case of Nebraska irrigation improving road safety.'; } },
+  ],
+},
 /* Local encounters for the stretches with the least regional content. */
 {
   id: 'z_missouri_silo_shadow', cat: 'zombie', regions: ['missouri'], weight: 5, cool: 30, art: 'zsilo',
@@ -3487,8 +3542,61 @@ ZT.Events.add([
 const X = ZT.X;
 const someone = (s) => X.someone(s);
 
+// Common costs belong to the repair, so the outcome lists every consequence.
+function summerFlat(s, c) {
+  X.wear(s, c, 'tires', 18); X.fatigueAll(s, c, 16); X.morale(s, c, -5); X.delay(s, c, 0.5);
+}
+
 ZT.Events.add([
 /* ================= VEHICLE ================= */
+{
+  id: 'v_midwest_summer_flat', cat: 'vehicle', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 8, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.vehicle.has && !s.vehicle.broken, art: 'tire',
+  text: 'A rear tire goes flat in the full heat of a Midwest afternoon. The jack sinks into the shoulder. The tire iron is too hot to hold. Everyone is exhausted, thirsty, and thinking about a cold beer. A farm stand down the road has a hand-painted sign: COLD DRINKS.',
+  choices: [
+    { text: 'Fit the spare, then reach the drink stand', hint: '1 part; half a day; tires net +6; fatigue +16; morale -5', show: (s) => s.inv.parts >= 1,
+      do(s, c) { summerFlat(s, c); X.take(s, c, 'parts', 1); X.repair(s, c, 'tires', 24);
+        return { text: 'The spare holds. You pack the tools with hands that would rather be holding something cold. The stand is just ahead.', then: 'p_midwest_cold_drinks' }; } },
+    { text: 'Patch it with the tool kit', hint: 'tools required; half a day; fatigue +16; morale -5; failure risk', show: (s) => s.inv.tools >= 1,
+      do(s, c) { summerFlat(s, c);
+        if (ZT.roll(s, X.p(s, 0.65, 'mechanic', 0.25))) { X.repair(s, c, 'tires', 10); return { text: 'The patch takes. The tire is worse than it was this morning, but it will reach the stand. You could describe the shape of a frosted mug from memory.', then: 'p_midwest_cold_drinks' }; }
+        X.breakdown(s, c, 'tires'); return 'The patch hisses flat again. The cold-drink sign remains visible from beside the jack, which seems unnecessarily cruel. The tire still needs a proper repair.'; } },
+    { text: 'Limp toward the stand on the flat', hint: 'half a day; tires -36; fatigue +16; morale -5; breakdown risk',
+      do(s, c) { summerFlat(s, c); X.wear(s, c, 'tires', 18); X.noise(s, c, 8);
+        if (s.vehicle.tires <= 0 || ZT.roll(s, 0.6)) { X.breakdown(s, c, 'tires'); return 'The tire shreds before you reach the stand. Now it is hot, you are thirsty, and the repair has become a larger repair.'; }
+        return { text: 'You reach the stand with the wheel making a noise you plan to worry about after a drink. The tire is in very poor shape.', then: 'p_midwest_cold_drinks' }; } },
+  ],
+},
+{
+  id: 'p_midwest_cold_drinks', cat: 'people', weight: 0, cond: () => false, art: 'station',
+  // Follow-up only: weight 0 alone does not exclude an event from this engine.
+  text: 'The stand has a propane refrigerator, cold beer, lemonade, and bottled water. The owner looks at the sweaty faces and the tire iron. "One of those days?" There is shade beside the counter.',
+  choices: [
+    { text: 'Trade for cold beers and water; rest here', hint: '1 trade lot; half a day; fatigue -8; morale +12', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.delay(s, c, 0.5); X.fatigueAll(s, c, -8); X.morale(s, c, 12);
+        return 'Water first, then a cold beer for anyone who wants one. The driver sticks to lemonade. You rest in the shade until the tire change starts to sound funny. It takes a while.'; } },
+    { text: 'Trade for lemonade, water, and a longer lie-down', hint: '1 trade lot; half a day; fatigue -14; morale +8', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.delay(s, c, 0.5); X.fatigueAll(s, c, -14); X.morale(s, c, 8);
+        return 'Cold water, lemonade, and as much of the stop as possible spent flat in the shade. The tire iron cools down too. Nobody checks on it.'; } },
+    { text: 'Use the shade and your own canteens', hint: 'half a day; fatigue -6; morale +2',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, -6); X.morale(s, c, 2); return 'The water is warm, but the shade is free. The owner lets you sit. You look at the refrigerator only occasionally.'; } },
+    { text: 'Keep going and save the supplies', hint: 'no extra delay; morale -3; fatigue stays',
+      do(s, c) { X.morale(s, c, -3); return 'You keep going. The cold beer becomes an imaginary cold beer, which is lighter to carry and not remotely as good.'; } },
+  ],
+},
+{
+  id: 'v_midwest_cabin_fan', cat: 'vehicle', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.vehicle.has && !s.vehicle.broken, art: 'hood',
+  text: 'The cabin fan quits. Open windows provide a strong breeze with the approximate temperature of a hair dryer. The vinyl seats have become adhesive.',
+  choices: [
+    { text: 'Replace the fan relay', hint: '1 part; half a day; electrical +12; fatigue +3', show: (s) => s.inv.parts >= 1,
+      do(s, c) { X.take(s, c, 'parts', 1); X.delay(s, c, 0.5); X.repair(s, c, 'electrical', 12); X.fatigueAll(s, c, 3); return 'A replacement relay restores the fan. It is still hot air, but now it is hot air with ambition.'; } },
+    { text: 'Rig a shade cloth and check the wiring', hint: 'tools required; half a day; electrical +4; fatigue +7', show: (s) => s.inv.tools >= 1,
+      do(s, c) { X.delay(s, c, 0.5); X.repair(s, c, 'electrical', 4); X.fatigueAll(s, c, 7); return 'A cleaned connector gets the fan moving slowly. The cloth keeps the seats out of direct sun. Nobody calls it air conditioning.'; } },
+    { text: 'Keep driving with the windows open', hint: 'electrical -8; fatigue +14; morale -5',
+      do(s, c) { X.wear(s, c, 'electrical', 8); X.fatigueAll(s, c, 14); X.morale(s, c, -5); return 'The wagon goes west. The air goes through it. Neither arrangement improves the mood.'; } },
+  ],
+},
 {
   id: 'v_missouri_cottonwood_filter', cat: 'vehicle', regions: ['missouri'], weight: 5, cool: 30,
   cond: (s) => s.vehicle.has, art: 'hood',
@@ -3704,6 +3812,34 @@ ZT.Events.add([
 },
 
 /* ================= HEALTH / ILLNESS / INFECTION ================= */
+{
+  id: 'h_midwest_heat_headache', cat: 'health', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `${c.m.name} has a pounding headache and says the warm water tastes like the inside of a garden hose. The afternoon has lasted about a week.`,
+  choices: [
+    { text: 'Stop for shade, water, and a snack', hint: '2 lbs food; half a day; fatigue -14; morale +4 for the sufferer', show: (s) => s.inv.food >= 2,
+      do(s, c) { X.take(s, c, 'food', 2); X.delay(s, c, 0.5); X.fatigue(s, c, c.m, -14); X.d(c, `${c.m.name} fatigue -14`); X.moraleM(s, c, c.m, 4); return `${c.m.name} rests with water and a snack until the headache eases. The horizon stops looking quite so personal.`; } },
+    { text: 'Rest in the shade with the canteen', hint: 'half a day; fatigue -8 for the sufferer',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigue(s, c, c.m, -8); X.d(c, `${c.m.name} fatigue -8`); return `${c.m.name} rests and drinks slowly. The water is still warm. Sitting still makes it less offensive.`; } },
+    { text: 'Push on until the next stop', hint: 'sufferer: health -6; fatigue +18; morale -6',
+      do(s, c) { X.hurt(s, c, c.m, 6, 'heat'); X.fatigue(s, c, c.m, 18); X.d(c, `${c.m.name} fatigue +18`); X.moraleM(s, c, c.m, -6); return `${c.m.name} gets quieter and more exhausted. Saving daylight has not saved much else.`; } },
+  ],
+},
+{
+  id: 'h_midwest_spoiled_lunch', cat: 'health', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 4, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.inv.food >= 4, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `${c.m.name} opens the lunch bag. The ice melted hours ago. Something that was meant to stay cold has developed an opinion about that.`,
+  choices: [
+    { text: 'Throw out the spoiled portion', hint: '4 lbs food; no illness',
+      do(s, c) { X.take(s, c, 'food', 4); return 'Four pounds into a ditch. It hurts to waste food. It would hurt more to keep it.'; } },
+    { text: 'Salvage only the sealed shelf-stable food', hint: '2 lbs food; half a day sorting',
+      do(s, c) { X.take(s, c, 'food', 2); X.delay(s, c, 0.5); return 'The sealed cans stay. Everything that needed refrigeration goes. It is slow, sticky work, but some of lunch survives.'; } },
+    { text: 'Eat it anyway', hint: '2 lbs food; 70% illness risk for the taster',
+      do(s, c) { X.take(s, c, 'food', 2); if (ZT.roll(s, 0.7)) { X.sicken(s, c, c.m, 18); X.fatigue(s, c, c.m, 12); X.d(c, `${c.m.name} fatigue +12`); return `${c.m.name} regrets it before you finish packing. The next roadside stop will be urgent and deeply unscenic.`; } return `${c.m.name} finishes a small portion and appears fine. This does not settle the argument about the smell.`; } },
+  ],
+},
 {
   id: 'h_missouri_wet_boots', cat: 'health', regions: ['missouri'], weight: 4, cool: 30, art: 'sick',
   setup(s, c) { c.m = someone(s); },
@@ -3983,6 +4119,13 @@ ZT.Events.add([
 const X = ZT.X;
 const someone = (s) => X.someone(s);
 
+// The general region helper falls back to Missouri at stops; keep these camps in Nebraska.
+const midwestCamp = (s) => {
+  const leg = ZT.currentLeg(s);
+  return leg ? ['missouri', 'platte', 'sandhills', 'panhandle'].includes(leg.region)
+    : ['omaha', 'kearney', 'ogallala', 'chimney'].includes(s.at);
+};
+
 ZT.Events.add([
 /* ================= SURVIVORS / TRADE ================= */
 {
@@ -4239,6 +4382,32 @@ ZT.Events.add([
 },
 
 /* ================= CAMP / NIGHT ================= */
+{
+  id: 'c_midwest_mosquitoes', cat: 'camp', when: 'camp', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && ['heat', 'clear', 'rain'].includes(s.weather) && midwestCamp(s), art: 'camp',
+  text: 'The mosquitoes arrive at supper and bring everyone they know. You have survived the dead only to become an all-you-can-eat buffet for the living.',
+  choices: [
+    { text: 'Use repellent from the trade box', hint: '1 trade lot; fatigue -8; morale +3', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.fatigueAll(s, c, -8); X.morale(s, c, 3); return 'The good repellent. The stuff everyone used to complain about smelling. Tonight it smells like sleep.'; } },
+    { text: 'Make a smoky fire', hint: 'noise +10; horde +2; fatigue -5',
+      do(s, c) { X.noise(s, c, 10); X.horde(s, c, 2); X.fatigueAll(s, c, -5); return 'The smoke discourages the mosquitoes and marks your camp for anything watching. You sleep better in clothes that smell like a ham.'; } },
+    { text: 'Cover up and endure it quietly', hint: 'fatigue +10; morale -4',
+      do(s, c) { X.fatigueAll(s, c, 10); X.morale(s, c, -4); return 'Blankets over heads. A hot, itchy night. By morning you have strong opinions about nature.'; } },
+  ],
+},
+{
+  id: 'c_midwest_storm_shelter', cat: 'camp', when: 'camp', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && ['rain', 'storm'].includes(s.weather) && midwestCamp(s), art: 'camp',
+  text: 'Rain sweeps across the campsite. A farm family offers space on a screened porch if you help cover the feed sacks. The porch has chairs. Actual chairs.',
+  choices: [
+    { text: 'Help with the sacks and share the porch', hint: 'fatigue -6 after the work; morale +7',
+      do(s, c) { X.fatigueAll(s, c, -6); X.morale(s, c, 7); return 'You drag tarps over the feed and sleep behind screens. The family talks about the weather for twenty minutes before mentioning the apocalypse. Good manners survive.'; } },
+    { text: 'Offer supplies instead of labor', hint: '1 trade lot; fatigue -12; morale +4', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.fatigueAll(s, c, -12); X.morale(s, c, 4); return 'The trade box earns a dry corner and an early night. Rain drums on the roof while somebody else worries about the feed.'; } },
+    { text: 'Stay out of sight at your own camp', hint: 'fatigue +8; morale -3',
+      do(s, c) { X.fatigueAll(s, c, 8); X.morale(s, c, -3); return 'You stay hidden and wet. The porch light goes out eventually. The rain does not.'; } },
+  ],
+},
 {
   id: 'c_missouri_flood_marker', cat: 'camp', when: 'camp', regions: ['missouri'], weight: 5, cool: 30, art: 'camp',
   // At landmarks the legacy region helper falls back to missouri; keep this local.
