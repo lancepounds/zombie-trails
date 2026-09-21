@@ -5,6 +5,33 @@ const X = ZT.X;
 const someone = (s) => X.someone(s);
 
 ZT.Events.add([
+/* ================= MIDWEST'S LAST DAYS OF SUMMER ================= */
+{
+  id: 'road_midwest_heat_buckle', cat: 'road', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'heat',
+  text: 'The heat has pushed a slab of pavement up like a trapdoor. Beyond it, the highway shimmers. Nebraska has added a speed bump without consulting anyone.',
+  choices: [
+    { text: 'Go around carefully on the gravel', hint: 'half a day; +4 fatigue',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 4); return 'The gravel shoulder gets you around the slab. The sun follows you the entire way, providing supervision nobody requested.'; } },
+    { text: 'Cross the slab at speed', hint: 'tires -12; body -8; noise +8', show: (s) => s.vehicle.has,
+      do(s, c) { X.wear(s, c, 'tires', 12); X.wear(s, c, 'body', 8); X.noise(s, c, 8); return 'The wagon lands with a noise that settles the argument about whether that was a good idea.'; } },
+    { text: 'Climb over and keep walking', hint: '+10 fatigue; morale -3', show: (s) => !s.vehicle.has,
+      do(s, c) { X.fatigueAll(s, c, 10); X.morale(s, c, -3); return 'The pavement is too hot to touch. The packs are heavy. A car would be nice, even one with terrible suspension.'; } },
+  ],
+},
+{
+  id: 'road_midwest_ice_freezer', cat: 'road', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 4, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'station',
+  text: 'A farm store still has a generator running its ice freezer. The owner offers a bag of ice and a round of cold bottled water. The price is written on cardboard. It has been crossed out twice.',
+  choices: [
+    { text: 'Trade for ice and cold water', hint: '1 trade lot; half a day; fatigue -12; morale +5', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.delay(s, c, 0.5); X.fatigueAll(s, c, -12); X.morale(s, c, 5); return 'Cold water, a wet cloth on the neck, and ice rattling in a cup. For a little while, the biggest problem is drinking too fast.'; } },
+    { text: 'Haul stock in exchange for drinks', hint: 'half a day; fatigue +6; morale +6',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, 6); X.morale(s, c, 6); return 'The owner trades cold drinks for moving stock into the shade. It is honest work in dishonest weather. You leave refreshed and thoroughly tired.'; } },
+    { text: 'Keep going', hint: 'no cost',
+      do() { return 'The freezer lid closes behind you with a very expensive-sounding thump.'; } },
+  ],
+},
 /* ================= GENERAL ROAD ================= */
 {
   id: 'road_last_bite_diner', cat: 'road', weight: 4, art: 'diner', cool: 30,

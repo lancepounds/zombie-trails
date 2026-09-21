@@ -17,12 +17,41 @@ difficult choices, and dry humor. Guide your survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen
 that journey without turning it into a different kind of game.
 
+## Latest content update: Midwest summer
+
+**Ten new regional encounters and one linked cold-drink stop** bring the complete
+event library to **201 events**, with 34 new choices. Two encounters each cover
+road trouble, zombies, vehicle trouble, health, and camp life.
+
+- **A flat tire in the heat:** the jack sinks, the tire iron burns, and everyone
+  wants a cold beer. The repair adds 16 fatigue, costs morale and travel time,
+  and makes you choose between a spare, a tool-kit patch, and limping onward.
+  A failed patch or shredded tire leaves the wagon needing a normal repair.
+- **Cold drinks afterward:** reach the farm stand and trade for cold beer and
+  water to favor morale, or lemonade and more rest to favor fatigue recovery.
+  Use your own canteens in the shade for free, or press on still exhausted.
+  Purchases use existing trade goods; drinks are consumed at the stop.
+- **More summer trouble:** buckled pavement, an ice freezer with rising prices,
+  a zombie-filled fairground beer tent, dead people following a sprinkler,
+  a failed cabin fan, a heat headache, spoiled lunch, mosquitoes, and a farm
+  family's storm shelter. Choices spend time or supplies, affect the party or
+  wagon, and sometimes attract more dead.
+
+The journey still starts September 1. These encounters belong to the Nebraska
+stretches in September; heat-specific scenes require actual Heat weather.
+Camp scenes respect rain and warm-weather conditions and stay out of unrelated
+landmark camps. Existing artwork, numbered menus, untimed choices, and saves
+continue to work. The follow-up cannot appear as an independent random event.
+
+See the [Midwest encounter and balance report](docs/balance/midwest-summer.md)
+for the event list, consequences, and matched simulator results.
+
 ## What's new in v1.6
 
 - **20 additional regional encounters** fill the six least-covered stretches,
   from the opening Missouri road to the Boise valley: 7 road, 6 zombie,
   2 vehicle, 3 health, and 2 camp events. Together with the new diner encounter,
-  the library now has 190 events.
+  that release brought the library to 190 events, before the Midwest update above.
   Missouri gains 11 encounters; Lava Plain and Boise Valley gain 3 each;
   Laramie Range, Bear River, and Wasatch Front gain 1 each. All six regions
   now have 11–12 region-specific random events, alongside the shared encounters.
@@ -202,6 +231,7 @@ concatenates it.
 | `build.js` | Generates the playable HTML, manifest, and app icons |
 | `test-story.js` | Story, save/load, and built-script checks |
 | `test-content.js` | New regional events, resource gates, local eligibility, and choice outcomes |
+| `test-midwest.js` | Summer weather and location gates, flat-tire/drink chain, costs, fatigue, and saved consequences |
 | `test-map.js` | Distances, branch states, route previews, estimates, and label layout |
 | `test-party.js` | Party size, traits, bonus caps, food use, estimates, old saves, and themes |
 | `test-audio.js` | Gesture unlock, mute, scheduled notes, ambience, hidden tabs, and audio fallback |
@@ -305,7 +335,7 @@ node build.js
 npm run test:quick
 ```
 
-The quick command runs the party, map, story, regional-content, and audio checks plus
+The quick command runs the party, map, story, regional-content, Midwest-content, and audio checks plus
 480 simulated campaigns: 10 runs for each combination of four difficulties,
 three choice policies, and four opening loadouts. For 1,920 simulated campaigns
 and the same focused checks:
@@ -314,7 +344,7 @@ and the same focused checks:
 npm test
 ```
 
-You can also run `node test-content.js`, `node test-map.js`, `node test-story.js`, or `node sim.js 40` separately. Map
+You can also run `node test-content.js`, `node test-midwest.js`, `node test-map.js`, `node test-story.js`, or `node sim.js 40` separately. Map
 checks cover all 289 stop pairs against enumerated routes, partial-leg mileage,
 unavailable branches, walking, preview state preservation, and non-overlapping
 labels at every zoom. The story
@@ -324,6 +354,28 @@ and built-script syntax. The simulator reports wins, deaths, supplies, routes,
 and event coverage; it exits unsuccessfully if campaign crashes occur.
 
 ### Latest content balance check
+
+The Midwest summer update was compared against `main` at `c8eae33` using
+`node sim.js 40`: **1,920 journeys before and 1,920 after**, with the same seeds,
+difficulties, policies, and loadouts. Both completed with **zero crashes**;
+all ten new random encounters appeared. The full test suite also passed,
+including **9,024 Midwest choice outcomes**, both repair-gamble branches,
+unaffordable-choice hiding, free alternatives, saved consequences, and fatigue
+that reduces later travel speed.
+
+| Difficulty | Before win rate | After win rate | Change |
+|---|---:|---:|---:|
+| Story | 99.8% | 99.8% | 0.0 percentage points |
+| Normal | 60.2% | 57.3% | −2.9 percentage points |
+| Hard | 42.3% | 44.6% | +2.3 percentage points |
+| Nightmare | 5.2% | 4.6% | −0.6 percentage points |
+
+This sample moved in both directions, with 480 journeys per difficulty.
+It does not establish a general difficulty shift; new encounters also change
+later random draws. No global balance settings or simulator policies changed.
+The [full report](docs/balance/midwest-summer.md) includes raw output and limits.
+
+### September 17 regional content balance check
 
 The 20-event expansion was compared against `main` at `fc38708` using
 `node sim.js 200`: **9,600 journeys before and 9,600 after**, with identical

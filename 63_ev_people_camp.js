@@ -4,6 +4,13 @@
 const X = ZT.X;
 const someone = (s) => X.someone(s);
 
+// The general region helper falls back to Missouri at stops; keep these camps in Nebraska.
+const midwestCamp = (s) => {
+  const leg = ZT.currentLeg(s);
+  return leg ? ['missouri', 'platte', 'sandhills', 'panhandle'].includes(leg.region)
+    : ['omaha', 'kearney', 'ogallala', 'chimney'].includes(s.at);
+};
+
 ZT.Events.add([
 /* ================= SURVIVORS / TRADE ================= */
 {
@@ -260,6 +267,32 @@ ZT.Events.add([
 },
 
 /* ================= CAMP / NIGHT ================= */
+{
+  id: 'c_midwest_mosquitoes', cat: 'camp', when: 'camp', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && ['heat', 'clear', 'rain'].includes(s.weather) && midwestCamp(s), art: 'camp',
+  text: 'The mosquitoes arrive at supper and bring everyone they know. You have survived the dead only to become an all-you-can-eat buffet for the living.',
+  choices: [
+    { text: 'Use repellent from the trade box', hint: '1 trade lot; fatigue -8; morale +3', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.fatigueAll(s, c, -8); X.morale(s, c, 3); return 'The good repellent. The stuff everyone used to complain about smelling. Tonight it smells like sleep.'; } },
+    { text: 'Make a smoky fire', hint: 'noise +10; horde +2; fatigue -5',
+      do(s, c) { X.noise(s, c, 10); X.horde(s, c, 2); X.fatigueAll(s, c, -5); return 'The smoke discourages the mosquitoes and marks your camp for anything watching. You sleep better in clothes that smell like a ham.'; } },
+    { text: 'Cover up and endure it quietly', hint: 'fatigue +10; morale -4',
+      do(s, c) { X.fatigueAll(s, c, 10); X.morale(s, c, -4); return 'Blankets over heads. A hot, itchy night. By morning you have strong opinions about nature.'; } },
+  ],
+},
+{
+  id: 'c_midwest_storm_shelter', cat: 'camp', when: 'camp', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && ['rain', 'storm'].includes(s.weather) && midwestCamp(s), art: 'camp',
+  text: 'Rain sweeps across the campsite. A farm family offers space on a screened porch if you help cover the feed sacks. The porch has chairs. Actual chairs.',
+  choices: [
+    { text: 'Help with the sacks and share the porch', hint: 'fatigue -6 after the work; morale +7',
+      do(s, c) { X.fatigueAll(s, c, -6); X.morale(s, c, 7); return 'You drag tarps over the feed and sleep behind screens. The family talks about the weather for twenty minutes before mentioning the apocalypse. Good manners survive.'; } },
+    { text: 'Offer supplies instead of labor', hint: '1 trade lot; fatigue -12; morale +4', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.fatigueAll(s, c, -12); X.morale(s, c, 4); return 'The trade box earns a dry corner and an early night. Rain drums on the roof while somebody else worries about the feed.'; } },
+    { text: 'Stay out of sight at your own camp', hint: 'fatigue +8; morale -3',
+      do(s, c) { X.fatigueAll(s, c, 8); X.morale(s, c, -3); return 'You stay hidden and wet. The porch light goes out eventually. The rain does not.'; } },
+  ],
+},
 {
   id: 'c_missouri_flood_marker', cat: 'camp', when: 'camp', regions: ['missouri'], weight: 5, cool: 30, art: 'camp',
   // At landmarks the legacy region helper falls back to missouri; keep this local.

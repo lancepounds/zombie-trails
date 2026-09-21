@@ -4,8 +4,61 @@
 const X = ZT.X;
 const someone = (s) => X.someone(s);
 
+// Common costs belong to the repair, so the outcome lists every consequence.
+function summerFlat(s, c) {
+  X.wear(s, c, 'tires', 18); X.fatigueAll(s, c, 16); X.morale(s, c, -5); X.delay(s, c, 0.5);
+}
+
 ZT.Events.add([
 /* ================= VEHICLE ================= */
+{
+  id: 'v_midwest_summer_flat', cat: 'vehicle', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 8, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.vehicle.has && !s.vehicle.broken, art: 'tire',
+  text: 'A rear tire goes flat in the full heat of a Midwest afternoon. The jack sinks into the shoulder. The tire iron is too hot to hold. Everyone is exhausted, thirsty, and thinking about a cold beer. A farm stand down the road has a hand-painted sign: COLD DRINKS.',
+  choices: [
+    { text: 'Fit the spare, then reach the drink stand', hint: '1 part; half a day; tires net +6; fatigue +16; morale -5', show: (s) => s.inv.parts >= 1,
+      do(s, c) { summerFlat(s, c); X.take(s, c, 'parts', 1); X.repair(s, c, 'tires', 24);
+        return { text: 'The spare holds. You pack the tools with hands that would rather be holding something cold. The stand is just ahead.', then: 'p_midwest_cold_drinks' }; } },
+    { text: 'Patch it with the tool kit', hint: 'tools required; half a day; fatigue +16; morale -5; failure risk', show: (s) => s.inv.tools >= 1,
+      do(s, c) { summerFlat(s, c);
+        if (ZT.roll(s, X.p(s, 0.65, 'mechanic', 0.25))) { X.repair(s, c, 'tires', 10); return { text: 'The patch takes. The tire is worse than it was this morning, but it will reach the stand. You could describe the shape of a frosted mug from memory.', then: 'p_midwest_cold_drinks' }; }
+        X.breakdown(s, c, 'tires'); return 'The patch hisses flat again. The cold-drink sign remains visible from beside the jack, which seems unnecessarily cruel. The tire still needs a proper repair.'; } },
+    { text: 'Limp toward the stand on the flat', hint: 'half a day; tires -36; fatigue +16; morale -5; breakdown risk',
+      do(s, c) { summerFlat(s, c); X.wear(s, c, 'tires', 18); X.noise(s, c, 8);
+        if (s.vehicle.tires <= 0 || ZT.roll(s, 0.6)) { X.breakdown(s, c, 'tires'); return 'The tire shreds before you reach the stand. Now it is hot, you are thirsty, and the repair has become a larger repair.'; }
+        return { text: 'You reach the stand with the wheel making a noise you plan to worry about after a drink. The tire is in very poor shape.', then: 'p_midwest_cold_drinks' }; } },
+  ],
+},
+{
+  id: 'p_midwest_cold_drinks', cat: 'people', weight: 0, cond: () => false, art: 'station',
+  // Follow-up only: weight 0 alone does not exclude an event from this engine.
+  text: 'The stand has a propane refrigerator, cold beer, lemonade, and bottled water. The owner looks at the sweaty faces and the tire iron. "One of those days?" There is shade beside the counter.',
+  choices: [
+    { text: 'Trade for cold beers and water; rest here', hint: '1 trade lot; half a day; fatigue -8; morale +12', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.delay(s, c, 0.5); X.fatigueAll(s, c, -8); X.morale(s, c, 12);
+        return 'Water first, then a cold beer for anyone who wants one. The driver sticks to lemonade. You rest in the shade until the tire change starts to sound funny. It takes a while.'; } },
+    { text: 'Trade for lemonade, water, and a longer lie-down', hint: '1 trade lot; half a day; fatigue -14; morale +8', show: (s) => s.inv.goods >= 1,
+      do(s, c) { X.take(s, c, 'goods', 1); X.delay(s, c, 0.5); X.fatigueAll(s, c, -14); X.morale(s, c, 8);
+        return 'Cold water, lemonade, and as much of the stop as possible spent flat in the shade. The tire iron cools down too. Nobody checks on it.'; } },
+    { text: 'Use the shade and your own canteens', hint: 'half a day; fatigue -6; morale +2',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigueAll(s, c, -6); X.morale(s, c, 2); return 'The water is warm, but the shade is free. The owner lets you sit. You look at the refrigerator only occasionally.'; } },
+    { text: 'Keep going and save the supplies', hint: 'no extra delay; morale -3; fatigue stays',
+      do(s, c) { X.morale(s, c, -3); return 'You keep going. The cold beer becomes an imaginary cold beer, which is lighter to carry and not remotely as good.'; } },
+  ],
+},
+{
+  id: 'v_midwest_cabin_fan', cat: 'vehicle', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.vehicle.has && !s.vehicle.broken, art: 'hood',
+  text: 'The cabin fan quits. Open windows provide a strong breeze with the approximate temperature of a hair dryer. The vinyl seats have become adhesive.',
+  choices: [
+    { text: 'Replace the fan relay', hint: '1 part; half a day; electrical +12; fatigue +3', show: (s) => s.inv.parts >= 1,
+      do(s, c) { X.take(s, c, 'parts', 1); X.delay(s, c, 0.5); X.repair(s, c, 'electrical', 12); X.fatigueAll(s, c, 3); return 'A replacement relay restores the fan. It is still hot air, but now it is hot air with ambition.'; } },
+    { text: 'Rig a shade cloth and check the wiring', hint: 'tools required; half a day; electrical +4; fatigue +7', show: (s) => s.inv.tools >= 1,
+      do(s, c) { X.delay(s, c, 0.5); X.repair(s, c, 'electrical', 4); X.fatigueAll(s, c, 7); return 'A cleaned connector gets the fan moving slowly. The cloth keeps the seats out of direct sun. Nobody calls it air conditioning.'; } },
+    { text: 'Keep driving with the windows open', hint: 'electrical -8; fatigue +14; morale -5',
+      do(s, c) { X.wear(s, c, 'electrical', 8); X.fatigueAll(s, c, 14); X.morale(s, c, -5); return 'The wagon goes west. The air goes through it. Neither arrangement improves the mood.'; } },
+  ],
+},
 {
   id: 'v_missouri_cottonwood_filter', cat: 'vehicle', regions: ['missouri'], weight: 5, cool: 30,
   cond: (s) => s.vehicle.has, art: 'hood',
@@ -221,6 +274,34 @@ ZT.Events.add([
 },
 
 /* ================= HEALTH / ILLNESS / INFECTION ================= */
+{
+  id: 'h_midwest_heat_headache', cat: 'health', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 5, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `${c.m.name} has a pounding headache and says the warm water tastes like the inside of a garden hose. The afternoon has lasted about a week.`,
+  choices: [
+    { text: 'Stop for shade, water, and a snack', hint: '2 lbs food; half a day; fatigue -14; morale +4 for the sufferer', show: (s) => s.inv.food >= 2,
+      do(s, c) { X.take(s, c, 'food', 2); X.delay(s, c, 0.5); X.fatigue(s, c, c.m, -14); X.d(c, `${c.m.name} fatigue -14`); X.moraleM(s, c, c.m, 4); return `${c.m.name} rests with water and a snack until the headache eases. The horizon stops looking quite so personal.`; } },
+    { text: 'Rest in the shade with the canteen', hint: 'half a day; fatigue -8 for the sufferer',
+      do(s, c) { X.delay(s, c, 0.5); X.fatigue(s, c, c.m, -8); X.d(c, `${c.m.name} fatigue -8`); return `${c.m.name} rests and drinks slowly. The water is still warm. Sitting still makes it less offensive.`; } },
+    { text: 'Push on until the next stop', hint: 'sufferer: health -6; fatigue +18; morale -6',
+      do(s, c) { X.hurt(s, c, c.m, 6, 'heat'); X.fatigue(s, c, c.m, 18); X.d(c, `${c.m.name} fatigue +18`); X.moraleM(s, c, c.m, -6); return `${c.m.name} gets quieter and more exhausted. Saving daylight has not saved much else.`; } },
+  ],
+},
+{
+  id: 'h_midwest_spoiled_lunch', cat: 'health', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 4, cool: 30,
+  cond: (s) => s.day <= 30 && s.weather === 'heat' && s.inv.food >= 4, art: 'sick',
+  setup(s, c) { c.m = someone(s); },
+  text: (s, c) => `${c.m.name} opens the lunch bag. The ice melted hours ago. Something that was meant to stay cold has developed an opinion about that.`,
+  choices: [
+    { text: 'Throw out the spoiled portion', hint: '4 lbs food; no illness',
+      do(s, c) { X.take(s, c, 'food', 4); return 'Four pounds into a ditch. It hurts to waste food. It would hurt more to keep it.'; } },
+    { text: 'Salvage only the sealed shelf-stable food', hint: '2 lbs food; half a day sorting',
+      do(s, c) { X.take(s, c, 'food', 2); X.delay(s, c, 0.5); return 'The sealed cans stay. Everything that needed refrigeration goes. It is slow, sticky work, but some of lunch survives.'; } },
+    { text: 'Eat it anyway', hint: '2 lbs food; 70% illness risk for the taster',
+      do(s, c) { X.take(s, c, 'food', 2); if (ZT.roll(s, 0.7)) { X.sicken(s, c, c.m, 18); X.fatigue(s, c, c.m, 12); X.d(c, `${c.m.name} fatigue +12`); return `${c.m.name} regrets it before you finish packing. The next roadside stop will be urgent and deeply unscenic.`; } return `${c.m.name} finishes a small portion and appears fine. This does not settle the argument about the smell.`; } },
+  ],
+},
 {
   id: 'h_missouri_wet_boots', cat: 'health', regions: ['missouri'], weight: 4, cool: 30, art: 'sick',
   setup(s, c) { c.m = someone(s); },
