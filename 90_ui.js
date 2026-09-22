@@ -58,12 +58,12 @@ function bindMenu(root, items, onPick) {
   const buttons = [...root.querySelectorAll('button.cmd')];
   buttons.forEach((b) => {
     const i = Number(b.dataset.i);
-    b.addEventListener('click', () => { if (!items[i].disabled) { ZT.Audio.select(); onPick(i, items[i]); } });
+    b.addEventListener('click', () => { if (!items[i].disabled) onPick(i, items[i]); });
   });
   items.forEach((it, i) => {
     if (it.sep || it.disabled) return;
     const k = String(it.key != null ? it.key : (i + 1)).toLowerCase();
-    keyMap[k] = () => { ZT.Audio.select(); onPick(i, it); };
+    keyMap[k] = () => onPick(i, it);
   });
   // arrow navigation
   let idx = -1;
@@ -71,7 +71,7 @@ function bindMenu(root, items, onPick) {
   const move = (d) => {
     if (!focusable.length) return;
     idx = (idx + d + focusable.length) % focusable.length;
-    focusable[idx].focus(); ZT.Audio.move();
+    focusable[idx].focus();
   };
   keyMap['arrowdown'] = () => move(1);
   keyMap['arrowup'] = () => move(-1);
@@ -316,7 +316,6 @@ function toggleSound(redraw = true) {
   settings.sound = !settings.sound;
   ZT.Audio.unlock(); ZT.Audio.setOn(settings.sound);
   updateSoundButton(); saveSettings();
-  if (settings.sound) ZT.Audio.select();
   if (redraw && screen === 'settings') goSettings();
 }
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
@@ -402,7 +401,7 @@ function goSetup() {
     </div>`);
   root.querySelectorAll('.diff').forEach((b) => b.addEventListener('click', () => {
     diff = b.dataset.d; capture();
-    ZT.Audio.select(); goSetup();
+    goSetup();
     root.querySelector(`.diff[data-d="${diff}"]`).focus();
   }));
   $('party-count').addEventListener('change', () => {
@@ -477,7 +476,7 @@ function drawShop() {
   root.querySelectorAll('button.q').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.k, d = Number(b.dataset.d), it = ZT.ITEMS[k];
     cart[k] = ZT.clamp(cart[k] + d * it.step, 0, it.cap);
-    ZT.Audio.move(); drawShop();
+    drawShop();
   }));
   const items = [{ label: 'Go' }, { label: 'Advice' }, { label: 'Clear' }];
   bindMenu(root, items, (i) => {
@@ -625,7 +624,7 @@ function startTravel() {
     </div>`);
   bindMenu(root, [{ label: 'Stop' }], () => { travelling = null; goTravel(); });
   keyMap['escape'] = () => { travelling = null; goTravel(); };
-  ZT.Audio.engine();
+  if (S.vehicle.has) ZT.Audio.engine();
   stepTravel();
 }
 function travelFlavor() {
@@ -942,7 +941,7 @@ function mapNodeOrder() {
 function selectMapStop(id, focus) {
   if (!ZT.NODES[id]) return;
   ctxData.sel = id; ctxData.mapRoute = null; ctxData.mapCenter = ZT.NODES[id];
-  ZT.Audio.move(); drawMapScreen(focus);
+  drawMapScreen(focus);
 }
 function drawMapScreen(focus) {
   const ids = mapNodeOrder();

@@ -7584,9 +7584,6 @@ const api = {
     if (next.key === scene.key && next.weather === scene.weather && next.moving === scene.moving) return;
     scene = next; startBed();
   },
-  move() { tone(420, 0.03, 'square', 0.025); },
-  select() { tone(660, 0.05); },
-  back() { tone(300, 0.05); },
   warn() { seq([[300, 0.09], [240, 0.13]]); },
   bad() { seq([[220, 0.1], [180, 0.12], [140, 0.2]]); },
   good() { seq([[520, 0.07], [660, 0.07], [880, 0.12]]); },
@@ -7596,8 +7593,9 @@ const api = {
   breakdown() { tone(120, 0.5, 'sawtooth', 0.045, 0, 30); hiss(0.3, 0.08, 700, 0.15); },
   shot() { hiss(0.16, 0.13, 2100); tone(115, 0.13, 'triangle', 0.08, 0, 30); },
   win() { seq([[440, 0.12], [554, 0.12], [659, 0.12], [880, 0.36]], 'triangle', 0.1); },
-  engine() { tone(36, 0.55, 'sawtooth', 0.04, 0, 100); hiss(0.25, 0.045, 420); },
-  stop() { tone(100, 0.7, 'triangle', 0.05, 0, 28); hiss(0.4, 0.05, 1100); },
+  // Routine vehicle sounds belong to ambience, including cancellation mid-cue.
+  engine() { tone(36, 0.55, 'sawtooth', 0.04, 0, 100, true); hiss(0.25, 0.045, 420, 0, true); },
+  stop() { tone(100, 0.7, 'triangle', 0.05, 0, 28, true); hiss(0.4, 0.05, 1100, 0, true); },
   repair() { [0, 0.17, 0.34].forEach(d => { hiss(0.05, 0.08, 3000, d); tone(720, 0.045, 'square', 0.03, d, 420); }); },
   heal() { seq([[392, 0.10], [523, 0.13], [659, 0.18]], 'sine', 0.09); },
   fuel() { [0, 0.1, 0.2, 0.3].forEach(d => tone(190, 0.08, 'sine', 0.055, d, 100)); },
@@ -7674,12 +7672,12 @@ function bindMenu(root, items, onPick) {
   const buttons = [...root.querySelectorAll('button.cmd')];
   buttons.forEach((b) => {
     const i = Number(b.dataset.i);
-    b.addEventListener('click', () => { if (!items[i].disabled) { ZT.Audio.select(); onPick(i, items[i]); } });
+    b.addEventListener('click', () => { if (!items[i].disabled) onPick(i, items[i]); });
   });
   items.forEach((it, i) => {
     if (it.sep || it.disabled) return;
     const k = String(it.key != null ? it.key : (i + 1)).toLowerCase();
-    keyMap[k] = () => { ZT.Audio.select(); onPick(i, it); };
+    keyMap[k] = () => onPick(i, it);
   });
   // arrow navigation
   let idx = -1;
@@ -7687,7 +7685,7 @@ function bindMenu(root, items, onPick) {
   const move = (d) => {
     if (!focusable.length) return;
     idx = (idx + d + focusable.length) % focusable.length;
-    focusable[idx].focus(); ZT.Audio.move();
+    focusable[idx].focus();
   };
   keyMap['arrowdown'] = () => move(1);
   keyMap['arrowup'] = () => move(-1);
@@ -7932,7 +7930,6 @@ function toggleSound(redraw = true) {
   settings.sound = !settings.sound;
   ZT.Audio.unlock(); ZT.Audio.setOn(settings.sound);
   updateSoundButton(); saveSettings();
-  if (settings.sound) ZT.Audio.select();
   if (redraw && screen === 'settings') goSettings();
 }
 function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
@@ -8018,7 +8015,7 @@ function goSetup() {
     </div>`);
   root.querySelectorAll('.diff').forEach((b) => b.addEventListener('click', () => {
     diff = b.dataset.d; capture();
-    ZT.Audio.select(); goSetup();
+    goSetup();
     root.querySelector(`.diff[data-d="${diff}"]`).focus();
   }));
   $('party-count').addEventListener('change', () => {
@@ -8093,7 +8090,7 @@ function drawShop() {
   root.querySelectorAll('button.q').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.k, d = Number(b.dataset.d), it = ZT.ITEMS[k];
     cart[k] = ZT.clamp(cart[k] + d * it.step, 0, it.cap);
-    ZT.Audio.move(); drawShop();
+    drawShop();
   }));
   const items = [{ label: 'Go' }, { label: 'Advice' }, { label: 'Clear' }];
   bindMenu(root, items, (i) => {
@@ -8241,7 +8238,7 @@ function startTravel() {
     </div>`);
   bindMenu(root, [{ label: 'Stop' }], () => { travelling = null; goTravel(); });
   keyMap['escape'] = () => { travelling = null; goTravel(); };
-  ZT.Audio.engine();
+  if (S.vehicle.has) ZT.Audio.engine();
   stepTravel();
 }
 function travelFlavor() {
@@ -8558,7 +8555,7 @@ function mapNodeOrder() {
 function selectMapStop(id, focus) {
   if (!ZT.NODES[id]) return;
   ctxData.sel = id; ctxData.mapRoute = null; ctxData.mapCenter = ZT.NODES[id];
-  ZT.Audio.move(); drawMapScreen(focus);
+  drawMapScreen(focus);
 }
 function drawMapScreen(focus) {
   const ids = mapNodeOrder();

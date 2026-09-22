@@ -125,9 +125,6 @@ const api = {
     if (next.key === scene.key && next.weather === scene.weather && next.moving === scene.moving) return;
     scene = next; startBed();
   },
-  move() { tone(420, 0.03, 'square', 0.025); },
-  select() { tone(660, 0.05); },
-  back() { tone(300, 0.05); },
   warn() { seq([[300, 0.09], [240, 0.13]]); },
   bad() { seq([[220, 0.1], [180, 0.12], [140, 0.2]]); },
   good() { seq([[520, 0.07], [660, 0.07], [880, 0.12]]); },
@@ -137,8 +134,9 @@ const api = {
   breakdown() { tone(120, 0.5, 'sawtooth', 0.045, 0, 30); hiss(0.3, 0.08, 700, 0.15); },
   shot() { hiss(0.16, 0.13, 2100); tone(115, 0.13, 'triangle', 0.08, 0, 30); },
   win() { seq([[440, 0.12], [554, 0.12], [659, 0.12], [880, 0.36]], 'triangle', 0.1); },
-  engine() { tone(36, 0.55, 'sawtooth', 0.04, 0, 100); hiss(0.25, 0.045, 420); },
-  stop() { tone(100, 0.7, 'triangle', 0.05, 0, 28); hiss(0.4, 0.05, 1100); },
+  // Routine vehicle sounds belong to ambience, including cancellation mid-cue.
+  engine() { tone(36, 0.55, 'sawtooth', 0.04, 0, 100, true); hiss(0.25, 0.045, 420, 0, true); },
+  stop() { tone(100, 0.7, 'triangle', 0.05, 0, 28, true); hiss(0.4, 0.05, 1100, 0, true); },
   repair() { [0, 0.17, 0.34].forEach(d => { hiss(0.05, 0.08, 3000, d); tone(720, 0.045, 'square', 0.03, d, 420); }); },
   heal() { seq([[392, 0.10], [523, 0.13], [659, 0.18]], 'sine', 0.09); },
   fuel() { [0, 0.1, 0.2, 0.3].forEach(d => tone(190, 0.08, 'sine', 0.055, d, 100)); },

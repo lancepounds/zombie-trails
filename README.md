@@ -116,6 +116,10 @@ for the event list, consequences, and matched simulator results.
   new players. Settings include volume, a test chime, and an independent ambient
   sound switch. Preferences persist; audio needs a click, tap, or key press first.
   Muting cancels queued notes, and hidden tabs go silent and pause the game loop.
+  Menu navigation, map selection, and supply quantity changes are silent.
+  Ambient sound OFF also silences engine starts and roadside stops; repairs,
+  gunfire, medical treatment, and other event cues remain available. Walking
+  never plays the engine-start effect.
 - **Reduced motion:** Settings can freeze scene animation, and your device's
   reduced-motion preference is respected automatically. Reduced flashing also
   suppresses the scavenging minigame's damage blink and full-screen flash.
