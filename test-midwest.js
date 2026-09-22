@@ -52,6 +52,19 @@ function valid(s) {
   }
 }
 
+// Cosmetic repair metadata follows the selected action; no phantom spare on a patch or drive-away.
+assert.equal(resolve(state(), 'v_midwest_summer_flat', 0).animation, 'tire_change');
+assert.equal(resolve(state(), 'v_midwest_summer_flat', 1).animation, null);
+assert.equal(resolve(state(), 'v_midwest_summer_flat', 2).animation, null);
+assert.equal(resolve(state(), 'v_flat_slow', 1).animation, 'tire_change');
+assert.equal(resolve(state(), 'v_flat_slow', 0).animation, null);
+const tireState=state(), tireContext={d:[]};
+Z.Vehicle.repairWithParts(tireState,tireContext,'tires');
+assert.equal(tireContext.animation,'tire_change','workshop spare-tire repairs use the same animation');
+const emptyState=state(), emptyContext={d:[]}; emptyState.inv.parts=0;
+Z.Vehicle.repairWithParts(emptyState,emptyContext,'tires');
+assert(!emptyContext.animation,'no animation without a spare part');
+
 for (const id of ids) {
   const e = Z.Events.byId[id]; assert(e, id);
   for (const region of Object.keys(Z.REGIONS)) for (const wx of Object.keys(Z.WEATHER)) {

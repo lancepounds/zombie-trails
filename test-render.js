@@ -58,6 +58,19 @@ for(const theme of ['light','dark']) {
     assert(parkedA.subarray(p,p+4).equals(parkedB.subarray(p,p+4)),'the settled wagon must not replay its arrival or wheel spin');
   }
   assert.notDeepEqual(draw('cold_drinks',s,0,{motion:true}),draw('cold_drinks',s,3.1,{motion:true}),'arrival should move the wagon');
+  // A spare-tire choice plays once, holds its finish, and skips motion accessibly.
+  for(const key of ['tire','summer_flat']) {
+    const opts={motion:true,settled:true,animation:'tire_change'};
+    const phases=[0,2.8,4.5,6.1,7.5,8].map(age=>draw(key,s,age,opts));
+    for(let i=1;i<phases.length;i++) assert.notDeepEqual(phases[i],phases[i-1],key+' must visibly advance the repair');
+    assert.deepEqual(draw(key,s,30,opts),phases[5],key+' must hold the completed repair instead of looping');
+    assert.deepEqual(draw(key,s,0.1,{...opts,motion:false}),phases[5],key+' reduced motion must show the finished repair');
+    assert.notDeepEqual(draw(key,s,8,{motion:true,settled:true}),phases[5],key+' must not fit a spare before a repair choice');
+    assert.deepEqual(draw(key,s,99,{...opts,elapsed:2.8}),phases[1],key+' must use time since this outcome, not total play time');
+    for(const pixels of phases) for(let p=0;p<pixels.length;p+=4) {
+      assert(['24,24,24,255','232,232,232,255'].includes(Array.from(pixels.subarray(p,p+4)).join(',')),key+' repair must stay pixel monochrome');
+    }
+  }
   // Palette is exact ink/paper at native resolution for the new illustrations.
   const allowed=new Set(['24,24,24,255','232,232,232,255']);
   for(const key of ['travel','summer_flat','cold_drinks','beer_tent','sprinkler','camp','title']) {

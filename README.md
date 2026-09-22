@@ -126,6 +126,15 @@ for the event list, consequences, and matched simulator results.
 
 Existing saved journeys and settings continue to load.
 
+Spare-tire repairs now show an eight-second pixel animation: raise the jack,
+remove the flat, fit the spare, tighten the lugs, and lower the wagon. It plays
+after choosing a spare in the flat-tire encounters or repairing broken tires
+from the wagon menu. The finished scene holds until Continue; you can continue
+early. Reduced motion shows the completed repair immediately. Patching or
+driving away does not play a spare replacement, and no looping sound is added.
+
+![Changing a flat tire](docs/previews/flat-tire-change.gif)
+
 ![Animated roadside sign and mountain camp](docs/previews/signs-and-camp.gif)
 
 The preview loops; in the game, arrivals play once and the scene waits for your
