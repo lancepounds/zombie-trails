@@ -44,6 +44,23 @@ const mutedCount = started.length; a.shot(); a.win(); assert.equal(started.lengt
 a.setOn(true); a.setAmbience(false);
 assert.equal(intervals.size, 0);
 const effectCount = started.length; a.find(); assert(started.length > effectCount, 'effects work without ambience');
+const quietCount = started.length;
+a.engine(); a.stop();
+for (const art of ['station', 'diner', 'reststop', 'zrest', 'cold_drinks', 'ice_freezer', 'beer_tent']) a.encounter(art, 'road', true);
+assert.equal(started.length, quietCount, 'ambient-off also silences engine starts and routine roadside stops');
+for (const cue of ['shot', 'repair', 'heal', 'warn']) {
+  const before = started.length; a[cue]();
+  assert(started.length > before, `${cue} still works with ambience off`);
+}
+a.setScene({ key: '' }); a.setAmbience(true);
+const vehicleStart = started.length; a.engine(); a.stop();
+const vehicleVoices = started.slice(vehicleStart);
+assert(vehicleVoices.length > 0, 'vehicle cues still work with ambience on');
+const eventStart = started.length; a.repair();
+const eventVoices = started.slice(eventStart);
+a.setAmbience(false);
+assert(vehicleVoices.every(n => n.connections.length === 0), 'ambient toggle stops vehicle cues already playing');
+assert(eventVoices.every(n => n.connections.length > 0), 'ambient toggle preserves playing event effects');
 a.setAmbience(true); a.setScene({ key: 'camp', weather: 'storm' });
 assert.equal(intervals.size, 1);
 a.setVisible(false); assert.equal(intervals.size, 0);
@@ -51,7 +68,7 @@ assert(started.every(n => n.connections.length === 0), 'hidden tab is silent');
 const hiddenCount = started.length; a.good(); assert.equal(started.length, hiddenCount);
 a.setVisible(true); assert.equal(intervals.size, 1);
 a.setScene({ key: '' }); assert.equal(intervals.size, 0, 'screens without art stop ambient sound');
-for (const cue of ['move','select','back','warn','bad','good','find','death','landmark','breakdown','shot','win','engine','stop','repair','heal','fuel','trade']) a[cue]();
+for (const cue of ['warn','bad','good','find','death','landmark','breakdown','shot','win','engine','stop','repair','heal','fuel','trade']) a[cue]();
 for (const scene of ['station', 'diner', 'zrest', 'radio']) a.encounter(scene, 'road', true);
 a.setVolume(0); a.setVolume(1); a.setVolume(NaN);
 a.setOn(false); a.setVisible(false); a.setVisible(true);
