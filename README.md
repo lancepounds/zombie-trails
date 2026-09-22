@@ -17,6 +17,41 @@ difficult choices, and dry humor. Guide your survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen
 that journey without turning it into a different kind of game.
 
+## What's new in v1.7: a richer trail picture book
+
+The game keeps its black-and-white, 320×160 pixel-art theme, with a more detailed
+wagon and characters, deeper scenery, and illustrations that match the encounter.
+
+- **A bigger travel wagon:** wood paneling, chrome trim, loaded roof rack,
+  a driver in the window, turning wheels, and visible wear on a damaged body.
+  Walking parties are easier to see too.
+- **Regional scenery:** Nebraska fields, barns, grain silos, and windbreaks;
+  shaded mountain ridges and fuller pines; desert mesas; town water towers;
+  shaped clouds, sagging utility wires, and roadside grass.
+- **Close-up repairs:** the tire scene has a detached wheel, jack, tools, and
+  a kneeling traveler. Hood repairs show the open engine bay and tools. The
+  summer flat has its own cold-drink sign and heat shimmer.
+- **Distinct summer encounters:** a timber cold-drink stand with a striped
+  awning, refrigerator, bottles, and seated travelers; an ice-store variant;
+  a county-fair beer tent with pennants and zombies behind its fence; and a
+  working irrigation sprinkler with the dead following its spray.
+- **A fuller campsite:** seated travelers with cups, a shaded tent, lantern,
+  stacked firewood, cabin or shelter, drifting smoke, and a crescent night sky.
+  The title scene shares that night treatment; sickbed scenes have a cot,
+  blanket, medicine box, and an attendant when another survivor is present.
+- **Sharper bitmap shading:** exact ink-and-paper dithering instead of blurred
+  pattern sampling. Static scenery is cached to keep drawing costs down.
+
+Both light and dark themes, reduced motion, one-to-five-person parties, saved
+journeys, and the existing untimed choices remain supported. The graphics do
+not spend resources, change the journey's random seed, or alter event outcomes.
+
+![Travel, repairs, the drink stand, county fair, and camp in v1.7](docs/previews/retro-graphics-light.png)
+
+[See the dark-theme preview](docs/previews/retro-graphics-dark.png).
+The [graphics validation notes](docs/graphics/v1.7.md) describe the checks and
+how to regenerate these images.
+
 ## Latest content update: Midwest summer
 
 **Ten new regional encounters and one linked cold-drink stop** bring the complete
@@ -235,6 +270,7 @@ concatenates it.
 | `test-map.js` | Distances, branch states, route previews, estimates, and label layout |
 | `test-party.js` | Party size, traits, bonus caps, food use, estimates, old saves, and themes |
 | `test-audio.js` | Gesture unlock, mute, scheduled notes, ambience, hidden tabs, and audio fallback |
+| `test-render.js` | Optional native Canvas checks and preview generation; uses `@napi-rs/canvas` for development only |
 | `sim.js` | Headless campaign simulator |
 | `index.html` | Generated playable game; do not edit by hand |
 
@@ -410,6 +446,12 @@ contains 190 events; its [simulator output](docs/balance/v1.6-combined-release.t
 is kept separately from the larger matched balance comparison above.
 
 ### Earlier validation
+
+The v1.7 graphics release passed the focused gameplay checks and 480 simulated
+journeys with zero crashes. Its separate native Canvas checks verify scene
+rendering, both themes, motion-off frames, animation, parked arrivals, survivor
+counts, on-foot play, exact palette output, and game-state preservation. See
+the [v1.7 graphics notes](docs/graphics/v1.7.md) for the render count and limits.
 
 During v1.3 development, 480 campaigns completed with zero game crashes. Their
 report exposed an outdated landmark constant in the simulator; after fixing it,

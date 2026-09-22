@@ -21,7 +21,7 @@ ZT.Events.add([
 },
 {
   id: 'road_midwest_ice_freezer', cat: 'road', regions: ['missouri', 'platte', 'sandhills', 'panhandle'], weight: 4, cool: 30,
-  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'station',
+  cond: (s) => s.day <= 30 && s.weather === 'heat', art: 'ice_freezer',
   text: 'A farm store still has a generator running its ice freezer. The owner offers a bag of ice and a round of cold bottled water. The price is written on cardboard. It has been crossed out twice.',
   choices: [
     { text: 'Trade for ice and cold water', hint: '1 trade lot; half a day; fatigue -12; morale +5', show: (s) => s.inv.goods >= 1,

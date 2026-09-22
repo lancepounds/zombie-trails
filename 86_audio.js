@@ -144,7 +144,7 @@ const api = {
   fuel() { [0, 0.1, 0.2, 0.3].forEach(d => tone(190, 0.08, 'sine', 0.055, d, 100)); },
   trade() { seq([[1046, 0.07], [1318, 0.16]], 'triangle', 0.08); },
   encounter(art, cat, vehicle) {
-    if (['station', 'diner', 'reststop', 'zrest'].includes(art) && vehicle) api.stop();
+    if (['station', 'diner', 'reststop', 'zrest', 'cold_drinks', 'ice_freezer', 'beer_tent'].includes(art) && vehicle) api.stop();
     else if (cat === 'zombie') { tone(120, 0.7, 'sawtooth', 0.035, 0, 48); }
     else if (cat === 'vehicle') api.breakdown();
     else if (art === 'radio') hiss(0.5, 0.05, 3000);
