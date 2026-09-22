@@ -94,7 +94,7 @@ function syncSound(hasScene) {
 }
 function sceneOptions(extra) {
   const motion = settings.motion && !(motionQuery && motionQuery.matches);
-  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', sel: ctxData.sel }, extra);
+  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', animation: screen === 'outcome' ? ctxData.animation : null, sel: ctxData.sel }, extra);
 }
 
 /* The scene is a band, not the page. Pick the largest whole-pixel scale that fits
@@ -703,12 +703,13 @@ function goEvent(inst) {
 }
 function showOutcome(inst, out) {
   screen = 'outcome';
-  ctxData.art = inst.art || ctxData.art || 'road';
+  ctxData.animation = out.animation || null;
+  ctxData.art = out.animation === 'tire_change' ? (inst.art === 'summer_flat' ? 'summer_flat' : 'tire') : inst.art || ctxData.art || 'road';
   const deltas = out.deltas.filter(Boolean);
   const items = [{ label: out.next ? 'And then' : 'Continue' }];
   const root = render(`
     ${statusLine()}
-    ${sceneHTML('Event outcome')}
+    ${sceneHTML(out.animation === 'tire_change' ? 'Changing the flat tire: raise the wagon, fit the spare, tighten the wheel, and lower the jack.' : 'Event outcome')}
     <div class="event">
       <div class="etext"><p>${esc(out.text || 'Nothing comes of it.')}</p></div>
       ${deltas.length ? `<ul class="deltas">${deltas.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
@@ -1145,7 +1146,7 @@ function goTreat() {
   keyMap['escape'] = () => goTravel();
 }
 function goRepair() {
-  screen = 'repair'; ctxData.art = 'hood';
+  screen = 'repair'; ctxData.art = S.vehicle.broken === 'tires' ? 'tire' : 'hood';
   const v = S.vehicle;
   if (!v.has) { showModal('NO WAGON', 'There is nothing to work on.', [{ label: 'Back' }], () => goTravel(), 'walking'); return; }
   const items = [];
@@ -1159,7 +1160,7 @@ function goRepair() {
   }
   items.push({ label: 'Back', key: 'Esc' });
   const subs = ZT.Vehicle.SUBS.map((k) => `<tr><th scope="row">${ZT.cap(k)}</th><td>${ZT.cap(ZT.Vehicle.subStatus(v[k]))}</td><td class="meter"><span style="width:${Math.round(v[k])}%"></span><b>${Math.round(v[k])}</b></td></tr>`).join('');
-  const root = render(`${statusLine()}${sceneHTML('The hood up')}
+  const root = render(`${statusLine()}${sceneHTML(ctxData.art === 'tire' ? 'The wagon stopped beside a flat tire' : 'The hood up')}
     <div class="event"><h2 class="mtitle">THE WAGON &mdash; ${esc(ZT.Vehicle.status(S).toUpperCase())}</h2>
     <table class="kv small-table">${subs}</table>
     ${menuHTML(items)}</div>`);
@@ -1184,7 +1185,7 @@ function goRepair() {
     if (act !== 'abandon') ZT.Audio.repair();
     ZT.Save.save(S);
     const deaths = []; while (S.pendingDeaths.length) deaths.push(S.party[S.pendingDeaths.shift()]);
-    showOutcome({ art: 'hood', text: '', choices: [] }, { text, deltas: c.d, next: null, deaths });
+    showOutcome({ art: ctxData.art, text: '', choices: [] }, { text, deltas: c.d, next: null, deaths, animation: c.animation || null });
   });
   keyMap['escape'] = () => goTravel();
 }

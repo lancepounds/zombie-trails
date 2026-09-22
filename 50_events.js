@@ -120,6 +120,7 @@ ZT.Events = {
   resolve(s, inst, index) {
     const c = inst._c;
     c.d = [];
+    c.animation = null;
     let outText = '';
     let next = null;
     if (index >= 0 && inst._choices[index]) {
@@ -138,6 +139,6 @@ ZT.Events = {
     const deaths = [];
     while (s.pendingDeaths.length) deaths.push(s.party[s.pendingDeaths.shift()]);
     if (!ZT.State.aliveCount(s) && !s.over) ZT.Travel.endGame(s, 'party');
-    return { text: outText, deltas: c.d.slice(), next, deaths };
+    return { text: outText, deltas: c.d.slice(), next, deaths, animation: c.animation || null };
   },
 };

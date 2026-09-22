@@ -72,6 +72,7 @@ ZT.Vehicle = {
   /* repair with parts: always works, costs a set and time */
   repairWithParts(s, c, sub) {
     if (s.inv.parts <= 0) return 'No spare parts.';
+    if (sub === 'tires') c.animation = 'tire_change';
     ZT.X.take(s, c, 'parts', 1);
     s.vehicle[sub] = ZT.clamp(s.vehicle[sub] + 45, 0, 100);
     s.vehicle.broken = null;

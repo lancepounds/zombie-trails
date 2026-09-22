@@ -17,7 +17,7 @@ ZT.Events.add([
   text: 'A rear tire goes flat in the full heat of a Midwest afternoon. The jack sinks into the shoulder. The tire iron is too hot to hold. Everyone is exhausted, thirsty, and thinking about a cold beer. A farm stand down the road has a hand-painted sign: COLD DRINKS.',
   choices: [
     { text: 'Fit the spare, then reach the drink stand', hint: '1 part; half a day; tires net +6; fatigue +16; morale -5', show: (s) => s.inv.parts >= 1,
-      do(s, c) { summerFlat(s, c); X.take(s, c, 'parts', 1); X.repair(s, c, 'tires', 24);
+      do(s, c) { summerFlat(s, c); X.take(s, c, 'parts', 1); X.repair(s, c, 'tires', 24); c.animation = 'tire_change';
         return { text: 'The spare holds. You pack the tools with hands that would rather be holding something cold. The stand is just ahead.', then: 'p_midwest_cold_drinks' }; } },
     { text: 'Patch it with the tool kit', hint: 'tools required; half a day; fatigue +16; morale -5; failure risk', show: (s) => s.inv.tools >= 1,
       do(s, c) { summerFlat(s, c);

@@ -982,23 +982,75 @@ function closeWagon(c, s, x, y, scale, hood) {
   if (!s.vehicle.has) return;
   c.save(); c.translate(x,y); c.scale(scale,scale); wagon(c,0,0,0,!!hood,s); c.restore();
 }
+function spareWheel(c, x, y, turn) {
+  x=Math.round(x); y=Math.round(y);
+  disc(c,x,y,10); disc(c,x,y,6,PAPER); disc(c,x,y,2);
+  for(let i=0;i<4;i++) {
+    const a=i*Math.PI/2+turn;
+    px(c,x+Math.round(Math.cos(a)*4),y+Math.round(Math.sin(a)*4),2,2);
+  }
+}
 function repairScene(c, s, t, opt, hot) {
+  // This is a cosmetic, one-shot sequence on a successful spare-tire choice.
+  // Use scene age, not the game's animation clock, and never replay on a loop.
+  const changing=!!(opt && opt.animation==='tire_change' && s.vehicle.has);
+  const age=changing ? (opt.motion===false ? 8 : ZT.clamp(opt.elapsed == null ? t : opt.elapsed,0,8)) : 0;
+  const done=changing && age>=8;
+  if(changing) t=age;
+  const rise=changing ? Math.min(1,age/1.6,Math.max(0,(8-age)/1)) : 0;
+  const lift=Math.round(rise*6), wheelY=135-lift;
   landscape(c,s,83,0); ground(c,108,0);
+  if(changing) {
+    const label=age<1.6?'RAISE THE JACK':age<3.6?'REMOVE THE FLAT':age<5.4?'FIT THE SPARE':age<7?'TIGHTEN THE LUGS':age<8?'LOWER THE WAGON':'SPARE FITTED';
+    plate(c,label,14,14);
+  }
   if (hot) {
     c.fillStyle=PAPER;c.fillRect(239,66,71,23);
     rect(c,239,66,71,23); plate(c,'COLD DRINKS',243,70); plate(c,'1/4 MI',255,80); px(c,272,89,2,18);
   }
   grey(c,35,131,178,9,'g25');
   if (s.vehicle.has) {
-    closeWagon(c,s,66,84,3,false);
-    // Near wheel is off; axle, jack, and detached tire make the repair legible.
-    disc(c,93,135,12,PAPER); disc(c,93,135,3); line(c,108,131,108,144);
-    line(c,102,145,115,145); line(c,104,140,112,132); line(c,104,132,112,140);
-    disc(c,44,135,13); disc(c,44,135,8,PAPER); disc(c,44,135,3);
-    for (let i=0;i<4;i++) { const a=i*Math.PI/2; line(c,44+Math.cos(a)*4,135+Math.sin(a)*4,44+Math.cos(a)*7,135+Math.sin(a)*7); }
+    closeWagon(c,s,66,84-lift,3,false);
+    // Keep the front tire on the shoulder as the jack raises the chassis.
+    disc(c,171,wheelY,12,PAPER); spareWheel(c,171,135,0);
+    disc(c,93,wheelY,12,PAPER); disc(c,93,wheelY,3);
+    if(!changing || age<1.6) {
+      // A visibly squashed tire, not an already completed repair, before choosing.
+      shape(c,[[83,wheelY-5],[87,wheelY-9],[99,wheelY-9],[103,wheelY-4],[105,wheelY+8],[81,wheelY+8]],INK);
+      disc(c,93,wheelY,5,PAPER);disc(c,93,wheelY,2);
+    } else if(age<3.6) {
+      const u=ZT.clamp((age-1.6)/1.5,0,1);
+      spareWheel(c,93-65*u,wheelY+(140-wheelY)*u,-u*4);
+    }
+    if(changing && age>=3.6) {
+      // The discarded flat stays beside the car instead of disappearing.
+      shape(c,[[17,138],[22,134],[34,134],[39,138],[41,146],[15,146]],INK);
+      c.fillStyle=PAPER; c.fillRect(24,138,8,4);
+    }
+    if(!changing || age<3.6) spareWheel(c,44,135,0);
+    else if(age<5.4) {
+      const u=ZT.clamp((age-3.6)/1.8,0,1);
+      spareWheel(c,44+49*u,135+(wheelY-135)*u,u*4);
+    } else spareWheel(c,93,wheelY,0);
+    // Scissor jack expands and folds; the handle works only during lift/lowering.
+    const jy=done?147:138-lift;
+    line(c,107,jy,101,146);line(c,101,jy,107,146);
+    line(c,99,147,111,147);line(c,100,jy,110,jy);
+    const pump=changing && (age<1.6 || age>=7 && !done) ? Math.round(Math.sin(age*9)*3) : 0;
+    line(c,108,143,122,142+pump);px(c,121,141+pump,3,3);
   }
   const n=ZT.State.aliveCount(s);
-  if (n) traveler(c,70,119,'repair',t,0);
+  if (n) {
+    if(done) traveler(c,53,117,'stand',0,0);
+    else {
+      traveler(c,70,119,'repair',t,0);
+      if(changing && age>=5.4 && age<7) {
+        const a=Math.sin(age*10)*0.7;
+        line(c,84,138,93,wheelY);
+        line(c,93,wheelY,93+Math.cos(a)*9,wheelY+Math.sin(a)*9);
+      }
+    }
+  }
   for (let i=1;i<n;i++) traveler(c,201+(i-1)*27,106+(i%2)*8,'drink',t,i);
   toolbox(c,139,143); line(c,173,152,188,146); px(c,185,145,5,2);
   // Heat is a restrained shimmer above the empty shoulder, away from faces and text.
