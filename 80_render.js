@@ -800,7 +800,7 @@ function pump(c, x, y) {
   line(c, x + 18, y + 7, x + 18, y + 19);
   line(c, x + 18, y + 19, x + 14, y + 17);
 }
-scenes.station = function (c, s, t, opt) {
+function stationBackdrop(c, s) {
   stopBackdrop(c, s);
   c.fillStyle = PAPER; c.fillRect(143, 61, 129, 47);
   rect(c, 143, 61, 129, 47); px(c, 139, 57, 137, 5);
@@ -811,6 +811,45 @@ scenes.station = function (c, s, t, opt) {
   px(c, 44, 50, 89, 7); plate(c, 'GAS', 81, 51);
   pump(c, 65, 82); pump(c, 99, 82);
   rect(c, 12, 53, 25, 29); plate(c, 'FUEL', 15, 58); plate(c, '--', 19, 70); px(c, 23, 82, 2, 26);
+}
+function refuelScene(c, s, t, opt) {
+  // The portable hand pump matches the abandoned station's underground tanks.
+  const age=opt.motion===false ? 8 : ZT.clamp(opt.elapsed == null ? t : opt.elapsed,0,8);
+  const pumping=age>=2.5 && age<6, connected=age>=2.5 && age<7;
+  const stroke=pumping ? Math.round(Math.sin((age-2.5)*7)*5) : 0;
+  stationBackdrop(c,s);
+  c.fillStyle=PAPER;c.fillRect(10,10,192,14);
+  plate(c,age<1.6?'BACK INTO THE BAY':age<2.5?'RIG THE HAND PUMP':age<6?'PUMP THE FUEL':age<7?'STOW THE HOSE':age<8?'BACK TO THE WAGON':'FUEL SECURED',14,14);
+  // Park once; the wheels stop when the car reaches the pump.
+  const progress=Math.min(1,age/1.6), x=Math.round(345-200*(1-Math.pow(1-progress,3)));
+  c.save();c.translate(x,99);c.scale(2,2);wagon(c,0,0,progress<1?-age*10:0,false,s);c.restore();
+  // Tank access cover, intake hose, and a small lever-operated pump.
+  disc(c,75,144,8);disc(c,75,144,5,PAPER);line(c,70,144,80,144);
+  line(c,75,144,94,140);line(c,94,140,107,133);
+  rect(c,104,121,12,18);px(c,101,139,18,3);px(c,108,114,4,8);
+  line(c,110,115,126,114+stroke);px(c,125,113+stroke,5,2);
+  if(connected) {
+    const stow=Math.max(0,age-6), tipX=Math.round(149-20*stow), tipY=Math.round(124+11*stow);
+    line(c,116,133,136,140);line(c,136,140,tipX,tipY);px(c,tipX-2,tipY-1,5,3);
+    if(pumping) {
+      const flow=((age-2.5)*1.7)%1;
+      c.fillStyle=PAPER;c.fillRect(Math.round(116+20*flow),Math.round(133+7*flow),1,1);
+    }
+  } else {
+    line(c,116,133,123,143);line(c,123,143,131,142);line(c,131,142,129,135);
+  }
+  const n=ZT.State.aliveCount(s);
+  if(age>=1.6 && n) {
+    const walking=age<2.5 || age>=7 && age<8;
+    const personX=age<2.5 ? 146-29*((age-1.6)/0.9) : age>=7 ? 117+29*Math.min(1,age-7) : 117;
+    traveler(c,personX,112,walking?'walk':pumping?'pump':'stand',age,0);
+    for(let i=1;i<n;i++) traveler(c,241+(i-1)*17,111+(i%2)*3,'stand',0,i);
+  }
+  weatherFX(c,s.weather,age,opt.reduce);
+}
+scenes.station = function (c, s, t, opt) {
+  if(opt && opt.animation==='refuel' && s.vehicle.has) { refuelScene(c,s,t,opt);return; }
+  stationBackdrop(c,s);
   parkedArrival(c, s, t, opt, 81, 121);
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
@@ -967,10 +1006,19 @@ function traveler(c, x, y, pose, t, variant) {
     const sip = Math.round(Math.max(0, Math.sin(t * 0.8 + variant)) * 2);
     c.fillStyle = PAPER; c.fillRect(16,9-sip,4,5); rect(c,16,9-sip,4,5); px(c,20,10-sip,1,3);
   } else {
-    px(c, 2, 18, 4, 9); px(c, 8, 18, 4, 9); px(c, 1, 27, 6, 2); px(c, 8, 27, 6, 2);
-    line(c, 1, 9, -1, 19); line(c, 11, 9, 14, 16);
-    if (pose === 'drink') { rect(c, 12, 12, 4, 6); px(c, 13, 10, 2, 2); }
-    else px(c, 13, 16, 2, 4);
+    if(pose==='walk') {
+      const stride=Math.round(Math.sin(t*9)*3);
+      line(c,4,18,4-stride,27);line(c,9,18,9+stride,27);
+      px(c,1-stride,27,6,2);px(c,8+stride,27,6,2);
+    } else {px(c,2,18,4,9);px(c,8,18,4,9);px(c,1,27,6,2);px(c,8,27,6,2);}
+    if(pose==='pump') {
+      const hand=2+Math.round(Math.sin((t-2.5)*7)*5);
+      line(c,1,9,0,5);line(c,0,5,10,hand);line(c,11,9,10,hand);
+    } else {
+      line(c,1,9,-1,19);line(c,11,9,14,16);
+      if(pose==='drink') {rect(c,12,12,4,6);px(c,13,10,2,2);}
+      else px(c,13,16,2,4);
+    }
   }
   c.restore();
 }

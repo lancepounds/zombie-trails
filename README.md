@@ -135,6 +135,11 @@ driving away does not play a spare replacement, and no looping sound is added.
 
 ![Changing a flat tire](docs/previews/flat-tire-change.gif)
 
+Successful gas-station siphoning now has an eight-second refueling sequence:
+back into the bay, operate the portable hand pump, stow the hose, and return to the wagon.
+It plays once only when fuel is actually added to a vehicle's supplies. The
+finished scene waits for Continue; reduced motion shows it immediately.
+
 ![Animated roadside sign and mountain camp](docs/previews/signs-and-camp.gif)
 
 The preview loops; in the game, arrivals play once and the scene waits for your

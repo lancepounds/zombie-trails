@@ -44,6 +44,16 @@ function valid(s) {
   assert.equal(saved.stats.events, s.stats.events, 'event state must survive a save');
 }
 let outcomes = 0;
+// Refueling art follows a real fuel gain at this station, never a shop/leave choice.
+for(let seed=1;seed<=40;seed++) for(const choice of [0,1,2,3]) for(const mode of ['wagon','foot','full']) {
+  const s=state('platte',{seed});
+  if(mode==='foot') s.vehicle.has=false;
+  if(mode==='full') s.inv.fuel=Z.ITEMS.fuel.cap;
+  const before=s.inv.fuel, inst=Z.Events.begin(s,'road_gas_station');
+  const out=Z.Events.resolve(s,inst,choice);
+  const expected=mode==='wagon' && [0,2].includes(choice) && s.inv.fuel>before ? 'refuel' : null;
+  assert.equal(out.animation,expected,'station animation must follow the selected action and actual fuel gain');
+}
 const categories = {};
 for (const id of ids) {
   const event = Z.Events.byId[id];

@@ -72,7 +72,18 @@ for(const theme of ['light','dark']) {
     }
   }
   // Palette is exact ink/paper at native resolution for the new illustrations.
+  const fuelOpts={motion:true,settled:true,animation:'refuel'};
+  const fuelPhases=[0.3,2,3.2,5.2,6.5,7.5,8].map(age=>draw('station',s,age,fuelOpts));
+  for(let i=1;i<fuelPhases.length;i++) assert.notDeepEqual(fuelPhases[i],fuelPhases[i-1],'refueling must visibly advance');
+  assert.deepEqual(draw('station',s,35,fuelOpts),fuelPhases[6],'refueling must not loop');
+  assert.deepEqual(draw('station',s,0,{...fuelOpts,motion:false}),fuelPhases[6],'reduced motion shows fuel secured');
+  assert.deepEqual(draw('station',s,99,{...fuelOpts,elapsed:3.2}),fuelPhases[2],'refueling uses scene age');
+  assert.notDeepEqual(draw('station',s,8,{motion:true,settled:true}),fuelPhases[6],'no refueling before a successful choice');
+  const foot=freeze(state('platte',1,false));
+  assert.deepEqual(draw('station',foot,3,fuelOpts),draw('station',foot,3,{motion:true,settled:true}),'no phantom refueling wagon on foot');
+  for(const n of [1,2,3,4,5]) draw('station',freeze(state('platte',n)),4,fuelOpts);
   const allowed=new Set(['24,24,24,255','232,232,232,255']);
+  for(const pixels of fuelPhases) for(let p=0;p<pixels.length;p+=4) assert(allowed.has(Array.from(pixels.subarray(p,p+4)).join(',')),'refueling must stay pixel monochrome');
   for(const key of ['travel','summer_flat','cold_drinks','beer_tent','sprinkler','camp','title']) {
     const pixels=draw(key,s,2.4,{motion:true,settled:true});
     for(let p=0;p<pixels.length;p+=4) assert(allowed.has(Array.from(pixels.subarray(p,p+4)).join(',')),key+' introduced an antialiased or off-palette pixel');
