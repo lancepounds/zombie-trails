@@ -3,6 +3,10 @@
 (function () {
 const X = ZT.X;
 const someone = (s) => X.someone(s);
+function stationFuel(s, c, gallons) {
+  const added = X.give(s, c, 'fuel', gallons);
+  if (added > 0 && s.vehicle.has && ZT.State.aliveCount(s)) c.animation = 'refuel';
+}
 
 ZT.Events.add([
 /* ================= MIDWEST'S LAST DAYS OF SUMMER ================= */
@@ -139,8 +143,8 @@ ZT.Events.add([
     { text: 'Siphon the tanks', hint: 'fuel; slow and noisy',
       do(s, c) { X.delay(s, c, 0.6); X.noise(s, c, 10);
         const got = ZT.rint(s, 2, 7) * ZT.DIFF[s.difficulty].salvage;
-        if (got < 4 && ZT.roll(s, 0.4)) { X.give(s, c, 'fuel', 2); return 'Hand-pumping through a garden hose for two hours yields about two gallons and a mouthful of gasoline for whoever drew the short straw.'; }
-        X.give(s, c, 'fuel', got);
+        if (got < 4 && ZT.roll(s, 0.4)) { stationFuel(s, c, 2); return 'Hand-pumping through a garden hose for two hours yields about two gallons and a mouthful of gasoline for whoever drew the short straw.'; }
+        stationFuel(s, c, got);
         if (ZT.roll(s, 0.3 + ZT.Travel.threat(s) * 0.25)) { const m = someone(s); X.injure(s, c, m, 10); X.noise(s, c, 8);
           return `The pump rig works. Halfway through, three of them come around the ice machine at ${m.name}, who gets away with a cut scalp and no dignity.`; }
         return 'The underground tank is nearly a third full. It is the best hour of the week.'; } },
@@ -148,7 +152,7 @@ ZT.Events.add([
       do(s, c) { X.delay(s, c, 0.3); X.noise(s, c, 5); X.loot(s, c, 0.8, 'food');
         return 'Chips, motor oil, a fishing license, and behind the counter a carton of cigarettes worth more than the car.'; } },
     { text: 'Do both', hint: 'greedy',
-      do(s, c) { X.delay(s, c, 1); X.noise(s, c, 18); X.give(s, c, 'fuel', ZT.rint(s, 2, 6) * ZT.DIFF[s.difficulty].salvage); X.loot(s, c, 0.9);
+      do(s, c) { X.delay(s, c, 1); X.noise(s, c, 18); stationFuel(s, c, ZT.rint(s, 2, 6) * ZT.DIFF[s.difficulty].salvage); X.loot(s, c, 0.9);
         if (ZT.roll(s, 0.5 + ZT.Travel.threat(s) * 0.2)) { const m = someone(s); X.bite(s, c, m); X.horde(s, c, 4);
           return `You take everything and stay too long. They come out of the car wash in a loose crowd and ${m.name} does not get clear in time.`; }
         return 'Fuel and food and nobody comes. You leave the station cleaner than you found it, in the sense that there is nothing left.'; } },
