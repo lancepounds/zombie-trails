@@ -523,3 +523,31 @@ Open the [game](https://lancepounds.github.io/zombie-trails/) in Safari, then ch
 **Share → Add to Home Screen**. Saves remain local to that browser or installed
 web app; adding an icon is not a cloud backup. This project has no service
 worker, so it does not guarantee offline loading.
+
+## Accessibility menu
+
+Choose **Accessibility** in the header from any screen. The menu pauses travel,
+scene animations, and active scavenging while it is open, then returns you to
+where you were. Tab and Shift+Tab stay within the dialog; Escape or Done closes
+it and returns focus to the Accessibility button.
+
+Preferences apply immediately and are remembered in this browser:
+
+- Text sizes from 92% to 200%, with an optional plain reading font.
+- Light/dark display and a high contrast interface.
+- Larger controls and more space between commands.
+- Reduced decorative motion, plus removal of flashes and scanlines. The device's
+  reduced-motion preference is always respected.
+- Sound, volume, and background atmosphere controls.
+- A pause after each travel day and menu-only scavenging without timed movement.
+  Switching to menu-only mode during an active minigame affects future runs.
+
+Preferences share the existing Settings store and do not rewrite journey saves.
+Storage-restricted browsers retain preferences only for the current page session.
+The pixel-art scenes remain illustrations with text descriptions; this menu is
+not a claim of complete screen-reader support or an accessibility certification.
+
+Optional browser regression checks (requires Playwright and its Chromium browser):
+run `node test-accessibility.js`. The test starts its own local server.
+These cover focus, persistence, 200% text on a narrow phone, unfinished setup,
+paused/resumed scavenging, unchanged game state, and device motion preferences.

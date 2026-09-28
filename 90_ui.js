@@ -8,7 +8,7 @@ let raf = null, last = 0, tAnim = 0;
 let sceneStarted = 0;
 const motionQuery = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, volume: 0.5, ambience: true, motion: true, flash: true, scale: 1, arcade: false, daily: true, theme: 'light' }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, volume: 0.5, ambience: true, motion: true, flash: true, scale: 1, arcade: false, daily: true, theme: 'light', plainFont: false, largeControls: false, highContrast: false }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -116,7 +116,7 @@ function fitCanvas(cv) {
 /* ---------------- loop ---------------- */
 function loop(ts) {
   raf = requestAnimationFrame(loop);
-  if (document.hidden) { last = ts; return; }
+  if (document.hidden || ZT.Accessibility.isOpen()) { last = ts; return; }
   const dt = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts; tAnim += dt;
   const cv = $('scene');
@@ -153,7 +153,11 @@ function unlockAudio() {
   ZT.Audio.unlock();
 }
 function onKey(e) {
+  if (ZT.Accessibility.isOpen() || e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
+  // Shell controls must remain usable even during the arcade minigame.
+  if (e.target && e.target.closest('.brand') && ['enter', ' '].includes(k)) return;
+  if (e.repeat && k === 'escape') { e.preventDefault(); return; }
   if (screen === 'scavenge') {
     const dn = e.type === 'keydown';
     if (k === 'arrowup' || k === 'w') { input.up = dn; e.preventDefault(); }
@@ -276,7 +280,7 @@ function goSettings() {
     { label: `Sound: ${settings.sound ? 'ON' : 'OFF'}`, hint: 'retro effects and roadside atmosphere' },
     { label: `Flashing and scanlines: ${settings.flash ? 'ON' : 'REDUCED'}`, hint: 'reduce for comfort' },
     { label: `Scavenging: ${settings.arcade ? 'MINIGAME' : 'MENU ONLY'}`, hint: 'menu mode needs no timed input' },
-    { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE'][settings.scale]}`, hint: '' },
+    { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE', 'EXTRA LARGE', 'DOUBLE'][settings.scale]}`, hint: '' },
     { label: 'Erase saved game and records', hint: 'cannot be undone' },
     { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
     { label: `Display: ${settings.theme === 'dark' ? 'DARK' : 'LIGHT'}`, hint: 'monochrome in both modes' },
@@ -291,7 +295,7 @@ function goSettings() {
     if (i === 0) { toggleSound(false); }
     else if (i === 1) { settings.flash = !settings.flash; ZT.R.setScanlines(settings.flash); applyFlash(); }
     else if (i === 2) settings.arcade = !settings.arcade;
-    else if (i === 3) { settings.scale = (settings.scale + 1) % 3; applyScale(); }
+    else if (i === 3) { settings.scale = (settings.scale + 1) % 5; applyScale(); }
     else if (i === 4) { if (confirm('Erase the saved game, memorials and scores?')) { ZT.Save.clear(1); ZT.Save.saveSettings(Object.assign({}, settings, { memorials: null })); try { localStorage.removeItem('zombietrails.v1.memorials'); localStorage.removeItem('zombietrails.v1.scores'); } catch (e) {} } }
     else if (i === 5) settings.daily = !settings.daily;
     else if (i === 6) { toggleTheme(); return; }
@@ -318,12 +322,15 @@ function toggleSound(redraw = true) {
   updateSoundButton(); saveSettings();
   if (redraw && screen === 'settings') goSettings();
 }
-function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14][settings.scale]); }
+function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14, 1.5, 2][settings.scale] || 1); }
 function applyFlash() { const tube = document.getElementById('tube'); if (tube) tube.classList.toggle('reduced', !settings.flash); }
 function applyTheme() {
   ZT.Display.setTheme(settings.theme);
   settings.theme = ZT.Display.mode;
-  const p = ZT.Display.palette(), root = document.documentElement;
+  const p = Object.assign({}, ZT.Display.palette()), root = document.documentElement;
+  if (settings.highContrast) Object.assign(p, settings.theme === 'dark'
+    ? { paper: '#000000', well: '#000000', ink: '#ffffff', muted: '#ffffff', dim: '#ffffff', rule: '#666666' }
+    : { paper: '#ffffff', well: '#ffffff', ink: '#000000', muted: '#000000', dim: '#000000', rule: '#999999' });
   for (const [token, value] of Object.entries({ ink: p.paper, 'ink-2': p.well, phos: p.ink, 'phos-dim': p.muted, 'phos-dimmer': p.dim, 'phos-faint': p.rule })) root.style.setProperty('--' + token, value);
   root.dataset.theme = settings.theme;
   root.style.colorScheme = settings.theme;
@@ -1403,6 +1410,21 @@ function endBlurb(won, survivors) {
 
 /* ---------------- boot ---------------- */
 function start() {
+  ZT.Accessibility.init(settings, () => {
+    applyTheme(); applyScale(); applyFlash();
+    ZT.Audio.setOn(settings.sound); ZT.Audio.setVolume(settings.volume);
+    ZT.Audio.setAmbience(settings.ambience); updateSoundButton();
+    ZT.R.setScanlines(settings.flash); saveSettings();
+  }, () => {
+    Object.assign(input, { up: false, down: false, left: false, right: false, action: false, vx: 0, vy: 0 });
+    if (scav) scav.stick = null;
+  }, () => {
+    last = performance.now();
+    if (screen === 'settings') goSettings();
+    else if (screen === 'map') drawMapScreen();
+    else if (screen === 'scav-menu') goScavengeMenu(ctxData.scavBack);
+    const cv = $('scene'); if (cv) fitCanvas(cv);
+  });
   applyTheme();
   const themeButton = $('theme-toggle');
   if (themeButton) themeButton.addEventListener('click', toggleTheme);

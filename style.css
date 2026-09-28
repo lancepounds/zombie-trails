@@ -174,7 +174,7 @@ button.cmd:disabled .num { background: transparent; border: 1px solid var(--phos
 
 /* ---------- documents ---------- */
 .doc { max-width: 100%; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 34px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 8px 34px; }
 .cols section.wide { grid-column: 1 / -1; }
 ul.plain, ol.plain { margin: 0 0 10px; padding-left: 1.3em; }
 ul.plain li, ol.plain li { margin-bottom: 3px; }
@@ -518,3 +518,41 @@ button, .place, .diff, .q, .p { touch-action: manipulation; }   /* kills the 300
 
 /* the canvas itself is a control surface during a scavenging run */
 .scav .scene { touch-action: none; }
+
+/* ---------- accessibility menu and optional reading preferences ---------- */
+.accessibility-menu {
+  width: min(680px, calc(100% - 24px)); max-width: calc(100% - 24px);
+  max-height: calc(100dvh - 24px); overflow-y: auto;
+  border: 4px double var(--phos); padding: 16px;
+  color: var(--phos); background: var(--ink); font: inherit;
+}
+.accessibility-menu::backdrop { background: rgb(0 0 0 / 65%); }
+.accessibility-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.accessibility-heading h1 { margin: 0; }
+.accessibility-menu fieldset { min-width: 0; margin: 18px 0; padding: 12px; border: 1px solid var(--phos-dim); }
+.accessibility-menu legend { font-weight: bold; padding: 0 6px; }
+.accessibility-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 14px; }
+.accessibility-field span { flex: 1 1 140px; }
+.accessibility-field select { flex: 1 1 220px; min-width: 0; max-width: 100%; min-height: 48px; font: inherit; }
+.accessibility-check { display: flex; align-items: flex-start; gap: 14px; min-height: 52px; padding: 10px 0; cursor: pointer; }
+.accessibility-check input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; margin: 3px 0 0; accent-color: var(--phos); }
+.accessibility-check span { min-width: 0; }
+.accessibility-check small { display: block; color: var(--phos-dim); font-size: .85em; margin-top: 4px; }
+.accessibility-menu :focus-visible { outline: 3px solid var(--phos); outline-offset: 3px; }
+.plain-font body, .plain-font :is(h1,h2,h3,button,input,select,caption,.brand,.tag,.num,.mem-name,.mem-here) {
+  font-family: Arial, Helvetica, sans-serif; letter-spacing: normal;
+}
+.plain-font .logo { font-family: 'IBM Plex Mono', monospace; }
+.high-contrast body { background-image: none; }
+.high-contrast .tube::after { display: none; }
+.large-controls button, .large-controls select, .large-controls input:not([type="checkbox"]) { min-height: 56px; }
+.large-controls button { padding: 12px; }
+.large-controls .menu { gap: 10px; }
+.large-controls .accessibility-check { min-height: 64px; }
+.large-controls .qty button { min-width: 56px; width: auto; height: auto; }
+@media (max-width: 600px) {
+  button.cmd { flex-wrap: wrap; }
+  button.cmd .hint { flex-basis: 100%; max-width: 100%; text-align: left; }
+  .bar span { white-space: normal; }
+  .accessibility-menu { padding: 12px; overflow-wrap: anywhere; }
+}
