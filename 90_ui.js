@@ -8,7 +8,7 @@ let raf = null, last = 0, tAnim = 0;
 let sceneStarted = 0;
 const motionQuery = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
 let keyMap = {};              // key -> handler for the current screen
-let settings = Object.assign({ sound: false, volume: 0.5, ambience: true, motion: true, flash: true, scale: 1, arcade: false, daily: true, theme: 'light', plainFont: false, largeControls: false, highContrast: false }, ZT.Save.settings());
+let settings = Object.assign({ sound: false, volume: 0.5, ambience: true, motion: true, flash: true, scale: 1, arcade: false, daily: true, theme: 'light', plainFont: false, largeControls: false, highContrast: false, dwell: false, dwellDelay: 1200 }, ZT.Save.settings());
 let travelling = null;        // travel animation state
 let scav = null;              // active minigame
 
@@ -44,7 +44,7 @@ function menuHTML(items, opts) {
     if (it.sep) return `<li class="sep">${esc(it.sep)}</li>`;
     const n = it.key != null ? it.key : (i + 1);
     const dis = it.disabled ? ' disabled' : '';
-    return `<li><button class="cmd" data-i="${i}"${dis}>
+    return `<li><button class="cmd" data-i="${i}"${dis}${it.dwell === false ? ' data-no-dwell' : ''}>
       <span class="num">${esc(String(n))}</span>
       <span class="lbl">${esc(it.label)}</span>
       ${it.hint ? `<span class="hint">${esc(it.hint)}</span>` : ''}
@@ -116,7 +116,7 @@ function fitCanvas(cv) {
 /* ---------------- loop ---------------- */
 function loop(ts) {
   raf = requestAnimationFrame(loop);
-  if (document.hidden || ZT.Accessibility.isOpen()) { last = ts; return; }
+  if (document.hidden || ZT.Accessibility.isOpen() || ZT.Dwell.isChoosing()) { last = ts; return; }
   const dt = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts; tAnim += dt;
   const cv = $('scene');
@@ -153,7 +153,7 @@ function unlockAudio() {
   ZT.Audio.unlock();
 }
 function onKey(e) {
-  if (ZT.Accessibility.isOpen() || e.ctrlKey || e.altKey || e.metaKey) return;
+  if (ZT.Accessibility.isOpen() || ZT.Dwell.isChoosing() || e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
   // Shell controls must remain usable even during the arcade minigame.
   if (e.target && e.target.closest('.brand') && ['enter', ' '].includes(k)) return;
@@ -281,7 +281,7 @@ function goSettings() {
     { label: `Flashing and scanlines: ${settings.flash ? 'ON' : 'REDUCED'}`, hint: 'reduce for comfort' },
     { label: `Scavenging: ${settings.arcade ? 'MINIGAME' : 'MENU ONLY'}`, hint: 'menu mode needs no timed input' },
     { label: `Text size: ${['SMALL', 'NORMAL', 'LARGE', 'EXTRA LARGE', 'DOUBLE'][settings.scale]}`, hint: '' },
-    { label: 'Erase saved game and records', hint: 'cannot be undone' },
+    { label: 'Erase saved game and records', hint: 'cannot be undone; click or keyboard only', dwell: false },
     { label: `Travel: ${settings.daily ? 'ONE DAY AT A TIME' : 'CONTINUOUS'}`, hint: 'pause to read each day' },
     { label: `Display: ${settings.theme === 'dark' ? 'DARK' : 'LIGHT'}`, hint: 'monochrome in both modes' },
     { label: `Volume: ${Math.round(settings.volume * 100)}%`, hint: 'cycles 0 / 25 / 50 / 75 / 100', key: 'V' },
@@ -1414,7 +1414,7 @@ function start() {
     applyTheme(); applyScale(); applyFlash();
     ZT.Audio.setOn(settings.sound); ZT.Audio.setVolume(settings.volume);
     ZT.Audio.setAmbience(settings.ambience); updateSoundButton();
-    ZT.R.setScanlines(settings.flash); saveSettings();
+    ZT.R.setScanlines(settings.flash); ZT.Dwell.refresh(); saveSettings();
   }, () => {
     Object.assign(input, { up: false, down: false, left: false, right: false, action: false, vx: 0, vy: 0 });
     if (scav) scav.stick = null;
@@ -1425,6 +1425,7 @@ function start() {
     else if (screen === 'scav-menu') goScavengeMenu(ctxData.scavBack);
     const cv = $('scene'); if (cv) fitCanvas(cv);
   });
+  ZT.Dwell.init(settings);
   applyTheme();
   const themeButton = $('theme-toggle');
   if (themeButton) themeButton.addEventListener('click', toggleTheme);

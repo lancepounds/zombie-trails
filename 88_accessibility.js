@@ -31,6 +31,9 @@ ZT.Accessibility = (function () {
         ${check('ambience', 'Background atmosphere', 'Engine, weather, and other ambient sounds when sound is on.')}
       </fieldset>
       <fieldset><legend>Time and controls</legend>
+        ${check('dwell', 'Dwell to tap', 'Hold the pointer over a control to activate it. Move away to cancel or to make another selection.')}
+        ${select('dwellDelay', 'Dwell delay', [[800, '0.8 seconds'], [1200, '1.2 seconds'], [1800, '1.8 seconds'], [2500, '2.5 seconds']])}
+        <p class="small">Works with a mouse, trackball, or eye tracker that moves the pointer. Use Pause dwell in the header for a break. For scavenging without holding movement controls, choose menu-only below. Typing names and erasing saves still use normal input.</p>
         ${check('daily', 'Pause after each travel day', 'Read the daily report before continuing.')}
         ${check('arcade', 'Use menu-only scavenging', 'Future scavenging uses choices without timed movement. An active minigame resumes when you close this menu.', true)}
         <p class="small">Use Tab and Shift+Tab to move between controls, Space to toggle a checkbox, and arrow keys to change a selection. Press Escape or Done to return to the game.</p>
