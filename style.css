@@ -556,3 +556,18 @@ button, .place, .diff, .q, .p { touch-action: manipulation; }   /* kills the 300
   .bar span { white-space: normal; }
   .accessibility-menu { padding: 12px; overflow-wrap: anywhere; }
 }
+
+/* Dwell countdown stays monochrome and never covers a pointer target. */
+.dwell-target { outline: 3px solid var(--phos) !important; outline-offset: 3px; }
+.dwell-countdown {
+  position: fixed; z-index: 10000; pointer-events: none;
+  width: 80px; padding: 4px 6px 9px; border: 2px solid var(--phos);
+  background: var(--ink); color: var(--phos); font: bold 16px/1.3 monospace;
+  text-align: center; box-shadow: 2px 2px 0 var(--ink);
+}
+.dwell-countdown::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 4px;
+  width: calc(100% * var(--dwell-progress, 0)); background: var(--phos);
+}
+.dwell-options .dwell-choice { display: block; width: 100%; margin: 10px 0; font: inherit; text-align: left; }
+.dwell-options [disabled] { opacity: .6; }

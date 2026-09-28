@@ -551,3 +551,29 @@ Optional browser regression checks (requires Playwright and its Chromium browser
 run `node test-accessibility.js`. The test starts its own local server.
 These cover focus, persistence, 200% text on a narrow phone, unfinished setup,
 paused/resumed scavenging, unchanged game state, and device motion preferences.
+
+### Dwell to tap
+
+In **Accessibility → Time and controls**, enable **Dwell to tap** to activate
+buttons, checkboxes, expandable details, and dropdown choices by holding the
+pointer over them. It is off by default. Pick a delay of **0.8, 1.2, 1.8, or 2.5
+seconds** (default: 1.2); the setting is remembered on this browser.
+
+A monochrome countdown shows the pending selection. Small pointer movements
+within the same control do not reset it. Move away to cancel. Each visit activates
+only once: move off the control before making another selection. This also
+prevents a newly rendered screen from immediately choosing a button beneath the
+resting pointer. Manual clicks, scrolling, keyboard input, and leaving the window
+cancel a pending dwell.
+
+**Pause dwell / Resume dwell** in the header provides a temporary break and can
+itself be operated by dwell. Dropdowns open a list of large choices that also work
+with dwell; Escape or Cancel dismisses the list. Normal mouse, touch, and keyboard
+input remain available. The feature works with a mouse, trackball, or eye tracker
+that moves the browser pointer; it does not perform eye tracking itself.
+
+Use **menu-only scavenging** for untimed choices. Dwell does not operate the
+arcade's held movement/search controls, type text, or erase saves and records.
+Touch scrolling never starts dwell activation.
+
+Browser regression: `node test-dwell.js` (requires Playwright and Chromium).
