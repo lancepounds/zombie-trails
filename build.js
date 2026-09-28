@@ -51,6 +51,7 @@ ${css}
   <div class="brand">
     <span>Zombie Trails</span>
     <span>Omaha &rarr; Boise &middot; ${VERSION}</span>
+    <button id="accessibility-toggle" class="theme-toggle" type="button" aria-haspopup="dialog" aria-controls="accessibility-menu">Accessibility</button>
     <button id="sound-toggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Enable sound">Sound: off</button>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode">Dark mode</button>
   </div>
