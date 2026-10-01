@@ -618,6 +618,9 @@ function partyEffects() {
 
 /* ---------------- travel action ---------------- */
 function startTravel() {
+  if (ZT.Overrun.due(S) && !S.over && ZT.State.aliveCount(S)) {
+    goEvent(ZT.Events.begin(S, 'story_wagon_overrun')); return;
+  }
   if (!S.vehicle.has) { /* walking is allowed */ }
   else if (S.vehicle.broken) { showModal('THE WAGON IS BROKEN', ZT.Vehicle.describeBreakdown(S, S.vehicle.broken) + ' Nothing moves until it is dealt with.', [{ label: 'Work on it' }, { label: 'Back' }], (k) => (k === 0 ? goRepair() : goTravel()), 'hood'); return; }
   else if (S.inv.fuel <= 0) { showModal('NO FUEL', 'The tank is dry. You are not driving anywhere on nothing. There may be fuel in this area if somebody goes looking for it.', [{ label: 'Scavenge for fuel' }, { label: 'Back' }], (k) => (k === 0 ? goScavengeMenu() : goTravel()), 'fuel'); return; }
@@ -716,6 +719,9 @@ function showOutcome(inst, out) {
   const deltas = out.deltas.filter(Boolean);
   const items = [{ label: out.next ? 'And then' : 'Continue' }];
   const outcomeAlt = out.animation === 'tire_change' ? 'Changing the flat tire: raise the wagon, fit the spare, tighten the wheel, and lower the jack.'
+    : out.animation === 'overrun_abandon' ? 'The survivors leave the overrun wagon and escape on foot along the other road.'
+    : out.animation === 'overrun_detour' ? 'The wagon escapes the horde onto the other branch of the road.'
+    : out.animation === 'overrun_escape' ? 'The damaged wagon breaks through the horde and keeps the chosen road.'
     : out.animation === 'engine_repair' ? 'Engine repair: fetch the parts, work under the hood, check the engine, and close the hood.'
     : out.animation === 'refuel' ? 'Refueling stop: back into the bay, recover fuel with a hand pump, stow the hose, and return to the wagon.' : 'Event outcome';
   const root = render(`

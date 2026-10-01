@@ -1670,10 +1670,15 @@ ZT.Travel = {
     if (!ZT.State.aliveCount(s)) { ZT.Travel.endGame(s, 'party'); return { kind: 'over' }; }
     if (!s.legTo) return { kind: 'fork', node: ZT.NODES[s.at] };   // waiting on a route choice
     if (s.vehicle.broken) return { kind: 'stuck', reason: 'broken' };
-    if (s.vehicle.has && s.inv.fuel <= 0) return { kind: 'stuck', reason: 'fuel' };
 
     const leg = ZT.currentLeg(s);
     if (!leg) return { kind: 'fork', node: ZT.NODES[s.at] };
+
+    // At a junction, resolve the horde before any miles or fuel are spent.
+    if (ZT.Overrun && ZT.Overrun.due(s)) {
+      return { kind: 'event', event: ZT.Events.begin(s, 'story_wagon_overrun') };
+    }
+    if (s.vehicle.has && s.inv.fuel <= 0) return { kind: 'stuck', reason: 'fuel' };
 
     s.day++;
     s.stats.travelDays++;
@@ -5429,6 +5434,7 @@ ZT.Story = {
   due(s, when) {
     if (when !== 'travel' || s.day - s.lastEventDay < 2) return null;
     const f = s.flags;
+    if (f.overrun && !f.overrunEcho && !s.once.story_overrun_echo && s.stats.travelDays >= f.overrun.travelDay + 3) return 'story_overrun_echo';
     let id = null;
     if (!f.redScarf && s.stats.travelDays >= 3) id = 'story_red_scarf';
     else if (f.redScarf && !f.redCamp && s.day >= f.redDay + 5 && s.miles >= f.redMile + 65) id = 'story_red_camp';
@@ -5494,6 +5500,86 @@ ZT.Events.add([
         do(s, c) { ZT.X.morale(s, c, 3); s.flags.redEnd = 'warned'; return ZT.Story.remember(s, 'A choice beside a handcart became a warning farther west. Ruth\'s family remembered you.'); } },
       { text: 'Backtrack and find a quiet way around', hint: 'half a day lost', show: s => !['friend', 'amends', 'trade'].includes(s.flags.redCamp),
         do(s, c) { ZT.X.delay(s, c, 0.5); s.flags.redEnd = 'detour'; return ZT.Story.remember(s, 'You found your own way around the dead. There was nobody ahead waiting to warn you.'); } },
+    ] },
+]);
+
+/* ===== 66_overrun.js ===== */
+/* A one-time, untimed crisis at a real route fork. Consequences are saved flags. */
+'use strict';
+ZT.Overrun = {
+  due(s) {
+    return !!(s.vehicle.has && !s.vehicle.broken && s.legTo && s.legMiles === 0 &&
+      ZT.legsFrom(s.at).length === 2 && !s.once.story_wagon_overrun && !s.flags.overrun);
+  },
+  alternative(s) { return ZT.legsFrom(s.at).find(l => l.to !== s.legTo); },
+  finish(s, c, choice, reroute, text) {
+    const from=s.at, original=s.legTo;
+    if (reroute) {
+      const alternative=this.alternative(s);
+      ZT.Travel.takeLeg(s, alternative.to);
+      ZT.X.d(c, `NEW ROAD: ${ZT.NODES[alternative.to].name} (${alternative.miles} miles)`);
+    }
+    s.flags.overrun={choice,from,original,to:s.legTo,day:s.day,travelDay:s.stats.travelDays};
+    c.animation=choice==='abandoned'?'overrun_abandon':reroute?'overrun_detour':'overrun_escape';
+    return ZT.Story.remember(s,text);
+  },
+};
+ZT.Events.add([
+  { id:'story_wagon_overrun', cat:'zombie', once:true, cond:()=>false, art:'zfork',
+    text(s) {
+      const road=ZT.currentLeg(s), alternate=ZT.Overrun.alternative(s);
+      return `At the ${ZT.NODES[s.at].name} junction, the wagon stops behind a wreck. A hand slaps the driver's window. Then another. The dead climb onto the hood and roof. Ahead, ${road.road} leads to ${ZT.NODES[road.to].name} (${road.miles} miles). The other branch leads to ${ZT.NODES[alternate.to].name} (${alternate.miles} miles). You have to choose what goes west with you.`;
+    }, choices:[
+      { text:'Shoot a gap and keep the chosen road', hint:'16 rounds + 2 gal fuel; body -8, fatigue +8, horde +18',
+        show:s=>s.inv.ammo>=16 && s.inv.fuel>=2,
+        do(s,c) {
+          ZT.X.shots(s,c,16);ZT.X.take(s,c,'fuel',2);ZT.X.wear(s,c,'body',8);
+          ZT.X.fatigueAll(s,c,8);ZT.X.noise(s,c,25);ZT.X.horde(s,c,18);
+          return ZT.Overrun.finish(s,c,'fought',false,`Sixteen shots clear just enough road. The wagon escapes toward ${ZT.NODES[s.legTo].name}, windows cracked and the horde following the noise. You kept the road you chose. Nobody asks you to stop for a while.`);
+        } },
+      { text:'Ram through and keep the chosen road', hint:'3 gal fuel; body -24, engine -10, everyone -8 health, fatigue +12',
+        show:s=>s.inv.fuel>=3,
+        do(s,c) {
+          ZT.X.take(s,c,'fuel',3);ZT.X.wear(s,c,'body',24);ZT.X.wear(s,c,'engine',10);
+          for(const m of ZT.State.alive(s)) ZT.X.hurt(s,c,m,8,'injuries');
+          ZT.X.fatigueAll(s,c,12);ZT.X.noise(s,c,15);
+          return ZT.Overrun.finish(s,c,'rammed',false,`The wagon punches through. The hood buckles and everyone hits something hard. You are still headed for ${ZT.NODES[s.legTo].name}. The car will remember the junction for the rest of the trip.`);
+        } },
+      { text:s=>`Reverse out and detour toward ${ZT.NODES[ZT.Overrun.alternative(s).to].name}`,
+        hint:'1 gal fuel + 1 day of food; body -6, fatigue +16; switch route', show:s=>s.inv.fuel>=1,
+        do(s,c) {
+          const destination=ZT.NODES[ZT.Overrun.alternative(s).to].name;
+          ZT.X.take(s,c,'fuel',1);ZT.X.wear(s,c,'body',6);ZT.X.fatigueAll(s,c,16);
+          const text=ZT.Overrun.finish(s,c,'detoured',true,`You reverse through the wrecks and escape onto the other branch toward ${destination}. A day goes into waiting out the dead and finding a way back onto that road. The wagon survives, but your planned route is gone.`);
+          ZT.X.delay(s,c,1);return text;
+        } },
+      { text:s=>`Leave the wagon and escape on foot toward ${ZT.NODES[ZT.Overrun.alternative(s).to].name}`,
+        hint:'Lose the wagon and supplies above carrying limits; 1 day of food, fatigue +20, morale -12; switch route',
+        do(s,c) {
+          const destination=ZT.NODES[ZT.Overrun.alternative(s).to].name;
+          ZT.X.loseVehicle(s,c,'overrun at the route fork');ZT.X.fatigueAll(s,c,20);ZT.X.morale(s,c,-12);
+          const text=ZT.Overrun.finish(s,c,'abandoned',true,`You slip out the far doors and leave the wagon to the dead. Only what fits in your packs comes with you. The other road leads toward ${destination}. A day passes before it is safe to reach it. From here, west is measured in footsteps.`);
+          ZT.X.delay(s,c,1);return text;
+        } },
+    ] },
+  { id:'story_overrun_echo', cat:'people', once:true, cond:()=>false, art:'camp',
+    text(s) {
+      const f=s.flags.overrun, destination=ZT.NODES[f.to].name;
+      if(f.choice==='abandoned') return `At camp, someone starts to say the supplies are in the wagon. Then remembers the ${ZT.NODES[f.from].name} junction. The walk toward ${destination} has made every pound in a pack a decision. A traveler offers a little food for the story of how you got here.`;
+      if(f.choice==='detoured') return `At camp, you unfold the map. ${destination} was not the road you meant to take. A traveler marks a quiet place ahead and says the road you escaped from is still packed with dead. For once, going the wrong way may have been the right thing.`;
+      return `At camp, a traveler recognizes the damage from the ${ZT.NODES[f.from].name} junction. You kept the road toward ${destination}, but everyone remembers the hands on the glass. The traveler offers a roll of cloth for the cuts. Nobody calls that junction a shortcut anymore.`;
+    }, choices:[
+      { text:'Share the story and accept the help', hint:s=>s.flags.overrun.choice==='abandoned'?'Gain up to 12 lb food; morale +4':s.flags.overrun.choice==='detoured'?'Horde -8; morale +4':'Gain up to 1 medicine kit; morale +4',
+        do(s,c) {
+          const choice=s.flags.overrun.choice;
+          if(choice==='abandoned') ZT.X.give(s,c,'food',12);
+          else if(choice==='detoured') ZT.X.horde(s,c,-8);
+          else ZT.X.give(s,c,'medicine',1);
+          ZT.X.morale(s,c,4);s.flags.overrunEcho=true;
+          return ZT.Story.remember(s,'You told another traveler about the overrun wagon. The road you chose there was still with you.');
+        } },
+      { text:'Keep the story to yourselves', hint:'No supply or morale change',
+        do(s) {s.flags.overrunEcho=true;return ZT.Story.remember(s,'You kept the story of the overrun wagon to yourselves. Nobody had forgotten.');} },
     ] },
 ]);
 
@@ -6559,6 +6645,48 @@ scenes.zhorde = function (c, s, t, opt) {
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
 scenes.horde = scenes.zhorde; scenes.zsurround = scenes.zhorde;
+scenes.zfork = function(c,s,t,opt) {
+  const action=opt && /^overrun_(escape|detour|abandon)$/.test(opt.animation||'') ? opt.animation : null;
+  const age=action ? (opt.motion===false ? 8 : ZT.clamp(opt.elapsed == null ? t : opt.elapsed,0,8)) : t;
+  if(action) t=age;
+  const u=action ? ZT.clamp((age-1)/6,0,1) : 0;
+  landscape(c,s,78,0);ground(c,111,0);
+  // Two roads and destination signs refer to the actual graph, not invented stops.
+  line(c,0,155,157,116);line(c,0,159,168,119);
+  line(c,157,116,319,94);line(c,168,119,319,101);
+  line(c,157,116,319,143);line(c,168,119,319,151);
+  const memory=s.flags.overrun, from=memory?memory.from:s.at;
+  const original=memory?memory.original:s.legTo;
+  const roads=ZT.legsFrom(from), alternate=roads.find(l=>l.to!==original);
+  px(c,270,67,3,58);
+  const originalName=ZT.NODES[original] ? ZT.NODES[original].name.toUpperCase().slice(0,13) : 'CHOSEN ROAD';
+  const alternateName=alternate ? ZT.NODES[alternate.to].name.toUpperCase().slice(0,13) : 'OTHER ROAD';
+  c.fillStyle=PAPER;c.fillRect(220,70,93,14);rect(c,220,70,93,14);plate(c,originalName,224,74);
+  c.fillStyle=PAPER;c.fillRect(220,87,93,14);rect(c,220,87,93,14);plate(c,alternateName,224,91);
+  const abandoned=action==='overrun_abandon';
+  const moving=action && !abandoned;
+  const x=moving ? Math.round(76+u*265) : 76;
+  const y=action==='overrun_detour' ? Math.round(89+u*22) : moving ? Math.round(89-u*20) : 89;
+  // The abandoned wagon remains as an illustration even though it is lost in state.
+  if(s.vehicle.has || abandoned) {
+    c.save();c.translate(x,y);c.scale(3,3);wagon(c,0,0,moving&&u<1?age*3:0,false,s);c.restore();
+    if(!action || age<2) {line(c,x+35,y+16,x+40,y+22);line(c,x+40,y+16,x+35,y+22);}
+  }
+  const approach=action ? Math.min(age,2) : Math.sin(t*.6)*2;
+  for(let i=0;i<10;i++) {
+    const zx=40+(i%5)*31+Math.round(approach*(i%2?1:-1));
+    const zy=112+Math.floor(i/5)*15;
+    c.save();c.translate(zx,zy);c.scale(2,2);figure(c,0,0,t+i,true);c.restore();
+  }
+  if(!action || abandoned || age<2) for(let i=0;i<3;i++) {
+    c.save();c.translate(101+i*27,61);c.scale(2,2);figure(c,0,0,t+i,true);c.restore();
+  }
+  if(abandoned) for(let i=0;i<ZT.State.aliveCount(s);i++) {
+    traveler(c,180+Math.round(u*140)-i*17,102+Math.round(u*12),u<1?'walk':'stand',age,i);
+  }
+  plate(c,!action?'THE WAGON IS OVERRUN':abandoned?(age<8?'LEAVE IT TO THE DEAD':'ON FOOT. ANOTHER ROAD.'):action==='overrun_detour'?(age<8?'TAKE THE OTHER ROAD':'A DIFFERENT JOURNEY'):(age<8?'BREAK THROUGH':'THE WAGON GETS AWAY'),12,12);
+  weatherFX(c,s.weather,t,opt&&opt.reduce);
+};
 scenes.znight = scenes.night;
 scenes.zbridge = function (c, s, t, opt) { scenes.bridge(c, s, t, { blocked: true, reduce: opt && opt.reduce }); for (let i = 0; i < 14; i++) figure(c, 60 + i * 14, 74, t + i, true); };
 scenes.zhouse = sceneRoadWith(function (c, s, t, hz) {
@@ -8647,6 +8775,9 @@ function partyEffects() {
 
 /* ---------------- travel action ---------------- */
 function startTravel() {
+  if (ZT.Overrun.due(S) && !S.over && ZT.State.aliveCount(S)) {
+    goEvent(ZT.Events.begin(S, 'story_wagon_overrun')); return;
+  }
   if (!S.vehicle.has) { /* walking is allowed */ }
   else if (S.vehicle.broken) { showModal('THE WAGON IS BROKEN', ZT.Vehicle.describeBreakdown(S, S.vehicle.broken) + ' Nothing moves until it is dealt with.', [{ label: 'Work on it' }, { label: 'Back' }], (k) => (k === 0 ? goRepair() : goTravel()), 'hood'); return; }
   else if (S.inv.fuel <= 0) { showModal('NO FUEL', 'The tank is dry. You are not driving anywhere on nothing. There may be fuel in this area if somebody goes looking for it.', [{ label: 'Scavenge for fuel' }, { label: 'Back' }], (k) => (k === 0 ? goScavengeMenu() : goTravel()), 'fuel'); return; }
@@ -8745,6 +8876,9 @@ function showOutcome(inst, out) {
   const deltas = out.deltas.filter(Boolean);
   const items = [{ label: out.next ? 'And then' : 'Continue' }];
   const outcomeAlt = out.animation === 'tire_change' ? 'Changing the flat tire: raise the wagon, fit the spare, tighten the wheel, and lower the jack.'
+    : out.animation === 'overrun_abandon' ? 'The survivors leave the overrun wagon and escape on foot along the other road.'
+    : out.animation === 'overrun_detour' ? 'The wagon escapes the horde onto the other branch of the road.'
+    : out.animation === 'overrun_escape' ? 'The damaged wagon breaks through the horde and keeps the chosen road.'
     : out.animation === 'engine_repair' ? 'Engine repair: fetch the parts, work under the hood, check the engine, and close the hood.'
     : out.animation === 'refuel' ? 'Refueling stop: back into the bay, recover fuel with a hand pump, stow the hose, and return to the wagon.' : 'Event outcome';
   const root = render(`
