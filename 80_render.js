@@ -1011,7 +1011,12 @@ function traveler(c, x, y, pose, t, variant) {
       line(c,4,18,4-stride,27);line(c,9,18,9+stride,27);
       px(c,1-stride,27,6,2);px(c,8+stride,27,6,2);
     } else {px(c,2,18,4,9);px(c,8,18,4,9);px(c,1,27,6,2);px(c,8,27,6,2);}
-    if(pose==='pump') {
+    if(pose==='mechanic') {
+      const reach=Math.round(Math.sin(t*9)*3);
+      line(c,1,9,7,4);line(c,7,4,20,3+reach);
+      line(c,11,9,20,3+reach);line(c,20,3+reach,27,reach);
+      px(c,26,reach-2,4,2);
+    } else if(pose==='pump') {
       const hand=2+Math.round(Math.sin((t-2.5)*7)*5);
       line(c,1,9,0,5);line(c,0,5,10,hand);line(c,11,9,10,hand);
     } else {
@@ -1108,12 +1113,30 @@ function repairScene(c, s, t, opt, hot) {
 scenes.tire = (c,s,t,opt) => repairScene(c,s,t,opt,s.weather==='heat');
 scenes.summer_flat = (c,s,t,opt) => repairScene(c,s,t,opt,true);
 scenes.hood = function(c,s,t,opt) {
+  const fixing=!!(opt && opt.animation==='engine_repair' && s.vehicle.has);
+  const age=fixing ? (opt.motion===false ? 8 : ZT.clamp(opt.elapsed == null ? t : opt.elapsed,0,8)) : 0;
+  if(fixing) t=age;
   landscape(c,s,82,0); ground(c,112,0);
-  closeWagon(c,s,52,85,3,true);
-  if (s.vehicle.has) smoke(c,177,98,t,43);
+  closeWagon(c,s,52,85,3,!fixing || age<7);
+  if (s.vehicle.has && (!fixing || age<5.5)) smoke(c,177,98,t,43);
   const n=ZT.State.aliveCount(s);
-  for(let i=0;i<n;i++) traveler(c,201+i*21,107-(i%2)*5,i===0?'repair':'stand',t,i);
+  for(let i=0;i<n;i++) {
+    if(fixing && i===0) {
+      const working=age>=1.5 && age<5.5;
+      const walking=age<1.5 || age>=7 && age<8;
+      const x=age<1.5 ? 212-15*age/1.5 : age>=7 ? 197+15*(age-7) : 197;
+      // Face the engine bay; hands and the wrench move without moving the wagon.
+      c.save();c.translate(Math.round(x)+14,107);c.scale(-1,1);
+      traveler(c,0,0,walking?'walk':working?'mechanic':'stand',t,0);
+      if(age<1.5) {rect(c,14,17,8,6);px(c,16,15,4,2);}
+      c.restore();
+    } else traveler(c,201+i*21,107-(i%2)*5,i===0?'repair':'stand',t,i);
+  }
   toolbox(c,184,143); rect(c,27,136,13,20); rect(c,30,132,7,4); px(c,30,141,7,2);
+  if(fixing) {
+    plate(c,age<1.5?'FETCH THE PARTS':age<5.5?'WORK UNDER THE HOOD':age<7?'CHECK THE ENGINE':age<8?'CLOSE THE HOOD':'ENGINE REPAIRED',14,14);
+    if(age>=1.5 && age<5.5) {rect(c,175,146,7,5);line(c,176,148,180,148);}
+  }
   weatherFX(c,s.weather,t,opt&&opt.reduce);
 };
 

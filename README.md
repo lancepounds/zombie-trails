@@ -12,6 +12,12 @@ monospace fallbacks.
 
 ## The heart of the game
 
+Successful spare-parts engine repairs now play an eight-second monochrome
+sequence: fetch the parts, work a wrench under the hood, check the engine,
+and close the hood. The finished scene stays put until **Continue**; you can
+continue early. Reduced motion shows the finished repair immediately. It uses
+the existing repair costs and outcomes, with no extra sound or repeated effects.
+
 Keep it old school: black-and-white scenes, numbered menus, scarce supplies,
 difficult choices, and dry humor. Guide your survivors west, manage the wagon,
 choose roads, scavenge, and decide when to stop. More personality should deepen

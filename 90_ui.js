@@ -712,9 +712,11 @@ function showOutcome(inst, out) {
   screen = 'outcome';
   ctxData.animation = out.animation || null;
   ctxData.art = out.animation === 'tire_change' ? (inst.art === 'summer_flat' ? 'summer_flat' : 'tire') : inst.art || ctxData.art || 'road';
+  if (out.animation === 'engine_repair') ctxData.art = 'hood';
   const deltas = out.deltas.filter(Boolean);
   const items = [{ label: out.next ? 'And then' : 'Continue' }];
   const outcomeAlt = out.animation === 'tire_change' ? 'Changing the flat tire: raise the wagon, fit the spare, tighten the wheel, and lower the jack.'
+    : out.animation === 'engine_repair' ? 'Engine repair: fetch the parts, work under the hood, check the engine, and close the hood.'
     : out.animation === 'refuel' ? 'Refueling stop: back into the bay, recover fuel with a hand pump, stow the hose, and return to the wagon.' : 'Event outcome';
   const root = render(`
     ${statusLine()}
