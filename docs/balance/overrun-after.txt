@@ -1,0 +1,83 @@
+=== WIN RATE (n=10 per cell) ===
+config                           win%    day   mile   surv   score
+easy/timid/balanced              100%    161   1470   4.70    1925
+easy/timid/food                  100%    168   1461   4.40    1881
+easy/timid/gear                  100%    200   1475   4.60    1801
+easy/timid/reckless              100%    155   1475   4.40    1672
+easy/bold/balanced               100%    128   1407   4.90    1756
+easy/bold/food                   100%    131   1391   4.50    1742
+easy/bold/gear                    90%    140   1395   4.20    1744
+easy/bold/reckless               100%    151   1401   4.80    1760
+easy/random/balanced              80%    174   1409   3.10    1575
+easy/random/food                  80%    213   1403   3.30    1739
+easy/random/gear                  90%    185   1521   4.00    1761
+easy/random/reckless             100%    198   1440   3.40    1660
+normal/timid/balanced              0%    141    951   0.00     643
+normal/timid/food                 10%    193    961   0.10     650
+normal/timid/gear                 10%    175    921   0.20     681
+normal/timid/reckless             30%    222   1167   1.00     741
+normal/bold/balanced              80%    173   1396   2.00    2195
+normal/bold/food                  70%    166   1412   1.90    2391
+normal/bold/gear                  60%    180   1370   1.30    2174
+normal/bold/reckless              70%    207   1403   1.50    2463
+normal/random/balanced            40%    211   1356   0.80     829
+normal/random/food                40%    200   1326   0.60     878
+normal/random/gear                40%    207   1106   1.00     747
+normal/random/reckless            60%    199   1335   1.00    1903
+hard/timid/balanced               10%    203   1143   0.10     948
+hard/timid/food                    0%    169    814   0.00     893
+hard/timid/gear                   10%    195    848   0.10     870
+hard/timid/reckless               20%    210   1195   0.30    1070
+hard/bold/balanced                70%    177   1396   1.40    3249
+hard/bold/food                    80%    175   1394   1.50    3272
+hard/bold/gear                    50%    182   1385   0.90    3167
+hard/bold/reckless                90%    183   1405   1.10    3128
+hard/random/balanced              20%    194    946   0.30    1023
+hard/random/food                  10%    206   1057   0.30     986
+hard/random/gear                  10%    148    875   0.20     744
+hard/random/reckless              30%    196   1378   0.60    1131
+nightmare/timid/balanced           0%    144    633   0.00     958
+nightmare/timid/food               0%    137    594   0.00     856
+nightmare/timid/gear               0%    126    542   0.00     840
+nightmare/timid/reckless          10%    162    921   0.10    1044
+nightmare/bold/balanced            0%    152    846   0.00    1124
+nightmare/bold/food                0%    143    798   0.00    1034
+nightmare/bold/gear                0%    167    861   0.00    1180
+nightmare/bold/reckless           20%    162    910   0.20    1084
+nightmare/random/balanced          0%    128    587   0.00     880
+nightmare/random/food              0%    150    661   0.00     710
+nightmare/random/gear              0%    133    552   0.00     814
+nightmare/random/reckless         10%    160   1068   0.10     814
+
+=== BY DIFFICULTY ===
+easy         95.0% of 120
+normal       42.5% of 120
+hard         33.3% of 120
+nightmare    3.3% of 120
+
+=== DEATHS BY CAUSE (all runs) ===
+  infection      1114
+  exposure       93
+  exhaustion     10
+  injuries       6
+  gunshot        4
+
+=== RESOURCE AT ZERO AT END ===
+  parts      17%
+  medicine   16%
+  goods      13%
+  tools      8%
+  fuel       0%
+
+crashes: 0
+
+=== ROADS TAKEN ===
+  ogallala>chimney         79
+  ogallala>cheyenne        401
+  granger>montpelier       131
+  granger>ogden            190
+  forthall>arco            42
+  forthall>twinfalls       199
+shortest route 1320 mi | longest 1550 mi
+events defined: 203 | never fired: 8 road_midwest_heat_buckle, road_missouri_pump_ledger, z_midwest_sprinkler, z_missouri_ditch_hands, z_missouri_weigh_station, v_siphon_own, h_missouri_wet_boots, h_ration_grumble
+choices defined: 574 | never taken: 47 road_midwest_heat_buckle:0 road_midwest_heat_buckle:1 road_midwest_heat_buckle:2 road_midwest_ice_freezer:0 road_midwest_ice_freezer:1 road_missouri_pump_ledger:0 road_missouri_pump_ledger:1 road_missouri_feed_store:0 z_midwest_beer_tent:2 z_midwest_sprinkler:0 z_midwest_sprinkler:1 z_midwest_sprinkler:2 z_missouri_silo_shadow:1 z_missouri_silo_shadow:2 z_missouri_ditch_hands:0 z_missouri_ditch_hands:1 z_missouri_weigh_station:0 z_missouri_weigh_station:1 z_scratch_argument:1 z_scratch_argument:3

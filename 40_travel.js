@@ -104,10 +104,15 @@ ZT.Travel = {
     if (!ZT.State.aliveCount(s)) { ZT.Travel.endGame(s, 'party'); return { kind: 'over' }; }
     if (!s.legTo) return { kind: 'fork', node: ZT.NODES[s.at] };   // waiting on a route choice
     if (s.vehicle.broken) return { kind: 'stuck', reason: 'broken' };
-    if (s.vehicle.has && s.inv.fuel <= 0) return { kind: 'stuck', reason: 'fuel' };
 
     const leg = ZT.currentLeg(s);
     if (!leg) return { kind: 'fork', node: ZT.NODES[s.at] };
+
+    // At a junction, resolve the horde before any miles or fuel are spent.
+    if (ZT.Overrun && ZT.Overrun.due(s)) {
+      return { kind: 'event', event: ZT.Events.begin(s, 'story_wagon_overrun') };
+    }
+    if (s.vehicle.has && s.inv.fuel <= 0) return { kind: 'stuck', reason: 'fuel' };
 
     s.day++;
     s.stats.travelDays++;

@@ -51,6 +51,19 @@ for(const theme of process.env.ZT_TEST_THEME ? [process.env.ZT_TEST_THEME] : ['l
     assert.notDeepEqual(draw(key,s,0.3,{motion:true,settled:true}),draw(key,s,2.7,{motion:true,settled:true}),key+' animation must be visible');
   }
   const s=freeze(state());
+  for(const animation of ['overrun_escape','overrun_detour','overrun_abandon']) {
+    const fork=state('sandhills');fork.at='ogallala';fork.legTo='chimney';
+    fork.flags.overrun={from:'ogallala',original:'chimney',to:animation==='overrun_escape'?'chimney':'cheyenne'};
+    if(animation==='overrun_abandon') fork.vehicle.has=false;
+    freeze(fork);
+    const opts={motion:true,settled:true,animation};
+    const frames=[0,2.5,5,8].map(age=>draw('zfork',fork,age,opts));
+    for(let i=1;i<frames.length;i++) assert.notDeepEqual(frames[i],frames[i-1],animation+' must show the escape');
+    assert.deepEqual(draw('zfork',fork,30,opts),frames[3],animation+' must hold its finish');
+    assert.deepEqual(draw('zfork',fork,0,{...opts,motion:false}),frames[3],animation+' reduced motion must skip to the finish');
+    assert.deepEqual(draw('zfork',fork,99,{...opts,elapsed:2.5}),frames[1],animation+' uses outcome age');
+    for(const pixels of frames) for(let p=0;p<pixels.length;p+=4) assert(['24,24,24,255','232,232,232,255'].includes(Array.from(pixels.subarray(p,p+4)).join(',')),animation+' must stay monochrome');
+  }
   const engineOpts={motion:true,settled:true,animation:'engine_repair'};
   const enginePhases=[0.3,2.4,5.8,7.3,8].map(age=>draw('hood',s,age,engineOpts));
   for(let i=1;i<enginePhases.length;i++) assert.notDeepEqual(enginePhases[i],enginePhases[i-1],'engine repair must visibly advance');

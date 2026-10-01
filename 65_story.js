@@ -64,6 +64,7 @@ ZT.Story = {
   due(s, when) {
     if (when !== 'travel' || s.day - s.lastEventDay < 2) return null;
     const f = s.flags;
+    if (f.overrun && !f.overrunEcho && !s.once.story_overrun_echo && s.stats.travelDays >= f.overrun.travelDay + 3) return 'story_overrun_echo';
     let id = null;
     if (!f.redScarf && s.stats.travelDays >= 3) id = 'story_red_scarf';
     else if (f.redScarf && !f.redCamp && s.day >= f.redDay + 5 && s.miles >= f.redMile + 65) id = 'story_red_camp';

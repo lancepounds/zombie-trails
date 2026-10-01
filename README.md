@@ -12,6 +12,34 @@ monospace fallbacks.
 
 ## The heart of the game
 
+### The overrun junction
+
+The first major route fork you leave in a working wagon now triggers a one-time
+zombie crisis before travel advances. The dead climb onto the hood and roof;
+four untimed choices show their costs before you commit:
+
+- Shoot a gap: spend 16 rounds and 2 gallons, damage the body, and attract the
+  horde, while keeping your chosen road.
+- Ram through: spend 3 gallons, heavily damage the wagon, and hurt the party,
+  while keeping your chosen road.
+- Reverse out: spend 1 gallon and a day, switching the actual map route to
+  the other branch while keeping the wagon.
+- Abandon the wagon: switch to the other branch on foot, lose supplies above
+  carrying limits, and spend a day escaping. This choice requires no supplies.
+
+Supply-gated choices disappear when you cannot afford them. The crisis uses
+the existing Ogallala, Green River, or Fort Hall branches; it does not teleport
+the party, invent a road, or award free mileage. Later scenes, saved journeys,
+the journal, and the ending remember your decision. Each escape has a brief
+monochrome animation; reduced motion displays its finish immediately, and
+Continue is available throughout. Older saves already partway down a road
+remain there and can encounter the crisis at a later fork.
+
+Run `node test-overrun.js` for route, choice, scarcity, save, and follow-up checks.
+The [balance comparison](docs/balance/overrun.md) records a substantial Normal-mode
+difficulty increase in the simulator. Optional browser checks are in
+`test-overrun-browser.js` and require Playwright with Chromium.
+
 Successful spare-parts engine repairs now play an eight-second monochrome
 sequence: fetch the parts, work a wrench under the hood, check the engine,
 and close the hood. The finished scene stays put until **Continue**; you can

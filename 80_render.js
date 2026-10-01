@@ -755,6 +755,48 @@ scenes.zhorde = function (c, s, t, opt) {
   weatherFX(c, s.weather, t, opt && opt.reduce);
 };
 scenes.horde = scenes.zhorde; scenes.zsurround = scenes.zhorde;
+scenes.zfork = function(c,s,t,opt) {
+  const action=opt && /^overrun_(escape|detour|abandon)$/.test(opt.animation||'') ? opt.animation : null;
+  const age=action ? (opt.motion===false ? 8 : ZT.clamp(opt.elapsed == null ? t : opt.elapsed,0,8)) : t;
+  if(action) t=age;
+  const u=action ? ZT.clamp((age-1)/6,0,1) : 0;
+  landscape(c,s,78,0);ground(c,111,0);
+  // Two roads and destination signs refer to the actual graph, not invented stops.
+  line(c,0,155,157,116);line(c,0,159,168,119);
+  line(c,157,116,319,94);line(c,168,119,319,101);
+  line(c,157,116,319,143);line(c,168,119,319,151);
+  const memory=s.flags.overrun, from=memory?memory.from:s.at;
+  const original=memory?memory.original:s.legTo;
+  const roads=ZT.legsFrom(from), alternate=roads.find(l=>l.to!==original);
+  px(c,270,67,3,58);
+  const originalName=ZT.NODES[original] ? ZT.NODES[original].name.toUpperCase().slice(0,13) : 'CHOSEN ROAD';
+  const alternateName=alternate ? ZT.NODES[alternate.to].name.toUpperCase().slice(0,13) : 'OTHER ROAD';
+  c.fillStyle=PAPER;c.fillRect(220,70,93,14);rect(c,220,70,93,14);plate(c,originalName,224,74);
+  c.fillStyle=PAPER;c.fillRect(220,87,93,14);rect(c,220,87,93,14);plate(c,alternateName,224,91);
+  const abandoned=action==='overrun_abandon';
+  const moving=action && !abandoned;
+  const x=moving ? Math.round(76+u*265) : 76;
+  const y=action==='overrun_detour' ? Math.round(89+u*22) : moving ? Math.round(89-u*20) : 89;
+  // The abandoned wagon remains as an illustration even though it is lost in state.
+  if(s.vehicle.has || abandoned) {
+    c.save();c.translate(x,y);c.scale(3,3);wagon(c,0,0,moving&&u<1?age*3:0,false,s);c.restore();
+    if(!action || age<2) {line(c,x+35,y+16,x+40,y+22);line(c,x+40,y+16,x+35,y+22);}
+  }
+  const approach=action ? Math.min(age,2) : Math.sin(t*.6)*2;
+  for(let i=0;i<10;i++) {
+    const zx=40+(i%5)*31+Math.round(approach*(i%2?1:-1));
+    const zy=112+Math.floor(i/5)*15;
+    c.save();c.translate(zx,zy);c.scale(2,2);figure(c,0,0,t+i,true);c.restore();
+  }
+  if(!action || abandoned || age<2) for(let i=0;i<3;i++) {
+    c.save();c.translate(101+i*27,61);c.scale(2,2);figure(c,0,0,t+i,true);c.restore();
+  }
+  if(abandoned) for(let i=0;i<ZT.State.aliveCount(s);i++) {
+    traveler(c,180+Math.round(u*140)-i*17,102+Math.round(u*12),u<1?'walk':'stand',age,i);
+  }
+  plate(c,!action?'THE WAGON IS OVERRUN':abandoned?(age<8?'LEAVE IT TO THE DEAD':'ON FOOT. ANOTHER ROAD.'):action==='overrun_detour'?(age<8?'TAKE THE OTHER ROAD':'A DIFFERENT JOURNEY'):(age<8?'BREAK THROUGH':'THE WAGON GETS AWAY'),12,12);
+  weatherFX(c,s.weather,t,opt&&opt.reduce);
+};
 scenes.znight = scenes.night;
 scenes.zbridge = function (c, s, t, opt) { scenes.bridge(c, s, t, { blocked: true, reduce: opt && opt.reduce }); for (let i = 0; i < 14; i++) figure(c, 60 + i * 14, 74, t + i, true); };
 scenes.zhouse = sceneRoadWith(function (c, s, t, hz) {
