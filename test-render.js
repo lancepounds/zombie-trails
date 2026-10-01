@@ -28,7 +28,7 @@ function draw(key,s,t,opt={}) {
   return Buffer.from(cv.getContext('2d').getImageData(0,0,320,160).data);
 }
 const keys=Object.keys(Z.R.scenes);
-for(const theme of ['light','dark']) {
+for(const theme of process.env.ZT_TEST_THEME ? [process.env.ZT_TEST_THEME] : ['light','dark']) {
   Z.Display.setTheme(theme);Z.R.setScanlines(false);
   for(const key of keys) for(const wx of Object.keys(Z.WEATHER)) {
     for(const variant of [0,1]) {
@@ -51,6 +51,17 @@ for(const theme of ['light','dark']) {
     assert.notDeepEqual(draw(key,s,0.3,{motion:true,settled:true}),draw(key,s,2.7,{motion:true,settled:true}),key+' animation must be visible');
   }
   const s=freeze(state());
+  const engineOpts={motion:true,settled:true,animation:'engine_repair'};
+  const enginePhases=[0.3,2.4,5.8,7.3,8].map(age=>draw('hood',s,age,engineOpts));
+  for(let i=1;i<enginePhases.length;i++) assert.notDeepEqual(enginePhases[i],enginePhases[i-1],'engine repair must visibly advance');
+  assert.deepEqual(draw('hood',s,30,engineOpts),enginePhases[4],'engine repair must hold its finish');
+  assert.deepEqual(draw('hood',s,0,{...engineOpts,motion:false}),enginePhases[4],'reduced motion shows the repaired engine');
+  assert.deepEqual(draw('hood',s,99,{...engineOpts,elapsed:2.4}),enginePhases[1],'engine repair uses outcome age');
+  assert.notDeepEqual(draw('hood',s,8,{motion:true,settled:true}),enginePhases[4],'no completed repair before choosing parts');
+  const walkingEngine=freeze(state('platte',1,false));
+  assert.deepEqual(draw('hood',walkingEngine,3,engineOpts),draw('hood',walkingEngine,3,{motion:true,settled:true}),'walking must not create a phantom engine repair');
+  for(const n of [1,2,3,4,5]) draw('hood',freeze(state('platte',n)),3,engineOpts);
+  for(const pixels of enginePhases) for(let p=0;p<pixels.length;p+=4) assert(['24,24,24,255','232,232,232,255'].includes(Array.from(pixels.subarray(p,p+4)).join(',')),'engine repair must stay monochrome');
   const parkedA=draw('cold_drinks',s,0.4,{motion:true,settled:true});
   const parkedB=draw('cold_drinks',s,2.7,{motion:true,settled:true});
   for(let y=120;y<147;y++) for(let x=108;x<166;x++) {

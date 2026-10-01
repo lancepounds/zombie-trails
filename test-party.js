@@ -12,6 +12,13 @@ const make = (partySize = 5, trait = 'steady') => {
   return s;
 };
 const near = (a, b) => assert(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
+for(const sub of ['engine','tires','electrical','body']) {
+  const s=make(), c={d:[]};s.vehicle.broken=sub;s.vehicle[sub]=10;s.inv.parts=1;
+  Z.Vehicle.repairWithParts(s,c,sub);
+  assert.equal(c.animation,sub==='engine'?'engine_repair':sub==='tires'?'tire_change':undefined);
+  assert.equal(s.inv.parts,0);assert.equal(s.vehicle.broken,null);
+}
+{const s=make(),c={d:[]};s.inv.parts=0;Z.Vehicle.repairWithParts(s,c,'engine');assert.equal(c.animation,undefined);}
 for (let n = 1; n <= 5; n++) {
   const s = make(n);
   assert.equal(s.party.length, n);
