@@ -276,7 +276,7 @@ dialogue, while v1.5's separately selected travel traits affect the journey.
 |---|---|
 | Click or tap | Choose a menu option |
 | Displayed number or letter | Activate that option where a single-key shortcut is shown |
-| Up / Down arrows | Move between menu buttons |
+| Up / Down arrows | Move from the focused menu button; wrap at the ends and skip disabled options |
 | Enter / Space | Activate the focused button |
 | Esc | Go back or stop travel where offered |
 | J on the road menu | Open Journal without advancing time or using supplies |
