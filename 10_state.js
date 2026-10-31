@@ -31,6 +31,7 @@ ZT.State = {
       recent: [], once: {},
       scavAt: {},
       pendingDeaths: [],
+      pendingScene: null,
       partialDelay: 0,
       lastEventDay: 0,
       over: null, departed: false,
@@ -85,6 +86,7 @@ ZT.State = {
     if (s.v === undefined) s.v = 1;
     // future migrations: if (s.v < 2) {...; s.v = 2;}
     s.pendingDeaths = s.pendingDeaths || [];
+    s.pendingScene = s.pendingScene || null;
     s.markerSeen = s.markerSeen || {};
     s.scavAt = s.scavAt || {};
     for (const m of s.party) if (!Object.hasOwn(ZT.TRAITS, m.trait)) m.trait = 'steady';
