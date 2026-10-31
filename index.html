@@ -8351,7 +8351,7 @@ function goTitle() {
       ${sceneHTML('A station wagon leaving a dead town at night, with figures on the road')}
       <p class="blurb">1980s trail survival. Omaha to Boise, a station wagon,<br>up to five survivors, and the dead on every road.</p>
       ${menuHTML(items)}
-      <p class="foot">${TOUCH ? 'Tap a command. Everything in the game is a tap.' : 'Number keys or click. Arrow keys move, Enter selects.'}</p>
+      <p class="foot">${TOUCH ? 'Tap a command. Everything in the game is a tap.' : 'Press the shown number or letter, or click. Arrow keys move, Enter selects.'}</p>
     </div>`);
   bindMenu(root, items, (i) => {
     if (i === 0) goSetup();
@@ -8420,7 +8420,7 @@ function goInstructions() {
         </section>
         <section>
           <h2>Controls</h2>
-          <p>Every command is a button. Tap it, click it, or press the number beside it. On a keyboard the arrow keys move through the menu, Enter chooses and Escape goes back.</p>
+          <p>Every command is a button. Tap it, click it, or press the number or letter beside it. On the road menu, J opens the journal, S opens Settings and 0 opens Save and quit. The arrow keys move through the menu, Enter chooses and Escape goes back.</p>
           <p>In the scavenging run on a touch screen, drag anywhere on the picture to steer and hold SEARCH to go through a container. On a keyboard it is the arrow keys and Space.</p>
           <p>Nothing in the journey itself is timed. The scavenging run is, and it can be turned off in Settings for a menu-driven version instead.</p>
         </section>
@@ -8697,7 +8697,7 @@ function goTravel() {
     { label: 'Scavenge', hint: 'search this area for supplies' },
     { label: 'Treat someone', hint: `${S.inv.medicine} ${ZT.plural(S.inv.medicine, 'kit')} of medicine`, disabled: false },
     { label: 'Work on the wagon', hint: v.has ? (v.broken ? 'it is broken' : `${ZT.Vehicle.status(S).toLowerCase()}`) : 'no wagon', disabled: !v.has },
-    { label: 'Journal', hint: 'what has happened so far' },
+    { label: 'Journal', hint: 'what has happened so far', key: 'J' },
     { label: 'Save and quit', hint: '', key: '0' },
     { label: 'Settings', hint: 'text, sound, and untimed controls', key: 'S' },
   ];
