@@ -934,7 +934,7 @@ function goStatus(back) {
             <tr><th scope="row">Cash</th><td class="num">${ZT.money(S.inv.cash)}</td><td></td></tr>
             <tr><th scope="row">Load</th><td class="num">${Math.round(ZT.State.weight(S))}</td><td class="dim">lbs</td></tr>
           </table>
-          <p class="dim">At ${ZT.RATIONS[S.rations].name.toLowerCase()} rations the party eats ${ZT.n(ZT.State.aliveCount(S) * ZT.RATIONS[S.rations].lbs)} lbs a day: about ${Math.floor(S.inv.food / Math.max(0.1, ZT.State.aliveCount(S) * ZT.RATIONS[S.rations].lbs))} days of food.</p>
+          <p class="dim">At ${ZT.RATIONS[S.rations].name.toLowerCase()} rations the party eats ${ZT.n(ZT.Party.foodNeed(S))} lbs a day: about ${Math.floor(S.inv.food / Math.max(0.1, ZT.Party.foodNeed(S)))} full days of food, allowing for your travelers' appetites.</p>
           ${v.has ? `<p class="dim">The wagon does about ${ZT.n(ZT.Vehicle.mpg(S))} miles to the gallon at this load and pace: about ${Math.round(ZT.Vehicle.range(S))} miles of fuel.</p>` : '<p class="dim">You are travelling on foot and carrying everything.</p>'}
         </section>
         <section>
