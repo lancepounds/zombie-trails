@@ -116,6 +116,44 @@ ZT.Events = {
     return inst;
   },
 
+  /* Save the prepared scene, not just its id: text/setup may consume RNG, and
+     filtered choices keep their original order. Party references must reconnect
+     to the loaded party rather than becoming detached copies of a traveler. */
+  snapshot(s, inst) {
+    const context = Object.assign({}, inst._c);
+    delete context.ev;
+    return {
+      id: inst.id, art: inst.art, text: inst.text,
+      choices: inst.choices.map(ch => Object.assign({}, ch)),
+      choiceIndexes: inst._choices.map(ch => inst._e.choices.indexOf(ch)),
+      context: JSON.parse(JSON.stringify(context, (key, value) => {
+        const member = s.party.indexOf(value);
+        return member < 0 ? value : { __ztMember: member };
+      })),
+    };
+  },
+  restore(s, saved) {
+    const e = saved && ZT.Events.byId[saved.id];
+    if (!e || !Array.isArray(saved.choiceIndexes) || !Array.isArray(saved.choices)) throw new Error('bad saved encounter');
+    const choices = saved.choiceIndexes.map(i => {
+      if (!Number.isInteger(i) || !e.choices[i]) throw new Error('bad saved choice');
+      return e.choices[i];
+    });
+    const c = JSON.parse(JSON.stringify(saved.context), (key, value) => {
+      if (value && Object.hasOwn(value, '__ztMember')) {
+        if (!Number.isInteger(value.__ztMember) || !s.party[value.__ztMember]) throw new Error('bad saved traveler');
+        return s.party[value.__ztMember];
+      }
+      return value;
+    });
+    c.ev = e;
+    return {
+      id: e.id, art: saved.art, cat: e.cat, text: saved.text,
+      choices: saved.choices.map(ch => Object.assign({}, ch)),
+      _choices: choices, _c: c, _e: e,
+    };
+  },
+
   /* Resolve a choice. Returns { text, deltas, next } where next is a chained event instance or null. */
   resolve(s, inst, index) {
     const c = inst._c;

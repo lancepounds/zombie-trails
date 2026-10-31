@@ -288,8 +288,11 @@ minigame scavenging, and day-by-day or continuous travel. No timed input is need
 for menu-only scavenging.
 
 Saves, preferences, memorials, and scores are stored in the current browser.
-Returning to the road screen saves the journey; use **Save and quit** before
-leaving. Clearing browser storage removes local records. Saves do not sync
+Returning to the road screen saves the journey. Encounters and their outcomes
+also save automatically: **Continue** restores an unfinished choice or its result
+after a refresh, including generated details and follow-up encounters. Completed
+choices are not applied twice. Use **Save and quit** when leaving from the road.
+Clearing browser storage removes local records. Saves do not sync
 between devices.
 
 ## Run locally

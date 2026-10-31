@@ -177,6 +177,29 @@ function onKey(e) {
 }
 
 /* ---------------- screens ---------------- */
+function resumeJourney() {
+  const pending = S.pendingScene;
+  if (pending) {
+    let inst, out;
+    try {
+      if (pending.kind === 'event') inst = ZT.Events.restore(S, pending.event);
+      else if (pending.kind === 'outcome') out = Object.assign({}, pending.out, {
+        next: pending.out.next ? ZT.Events.restore(S, pending.out.next) : null,
+        deaths: pending.out.deaths.map(i => S.party[i]).filter(Boolean),
+      });
+      else throw new Error('unknown saved scene');
+    } catch (e) {
+      S.pendingScene = null;
+      ZT.State.log(S, 'The saved encounter could not be restored.', true);
+      ZT.Save.save(S);
+      return showModal('SAVED ENCOUNTER UNAVAILABLE', 'This saved encounter is not available in this build. Your saved party, supplies, and route are still here.', [{ label: 'Continue the journey' }], () => S.over ? goEnd() : goTravel(), 'road');
+    }
+    if (inst) return goEvent(inst);
+    return showOutcome({ art: pending.art }, out);
+  }
+  if (S.over) goEnd(); else goTravel();
+}
+
 function goTitle() {
   screen = 'title'; ctxData = { art: 'title' }; S = null; travelling = null;
   const hasSave = ZT.Save.has();
@@ -198,7 +221,7 @@ function goTitle() {
     </div>`);
   bindMenu(root, items, (i) => {
     if (i === 0) goSetup();
-    else if (i === 1) { const s = ZT.Save.load(); if (s) { S = s; if (S.over) goEnd(); else goTravel(); } }
+    else if (i === 1) { const s = ZT.Save.load(); if (s) { S = s; resumeJourney(); } }
     else if (i === 2) goInstructions();
     else if (i === 3) goRoadBehind();
     else if (i === 4) goSettings();
@@ -695,6 +718,8 @@ function showTravelDay(before) {
 /* ---------------- event modal ---------------- */
 function goEvent(inst) {
   screen = 'event'; ctxData.art = inst.art || 'road';
+  S.pendingScene = { kind: 'event', event: ZT.Events.snapshot(S, inst) };
+  ZT.Save.save(S);
   ZT.Audio.encounter(ctxData.art, inst.cat, S.vehicle.has);
   const items = inst.choices.map((ch) => ({ label: ch.text, hint: ch.hint }));
   const root = render(`
@@ -716,6 +741,14 @@ function showOutcome(inst, out) {
   ctxData.animation = out.animation || null;
   ctxData.art = out.animation === 'tire_change' ? (inst.art === 'summer_flat' ? 'summer_flat' : 'tire') : inst.art || ctxData.art || 'road';
   if (out.animation === 'engine_repair') ctxData.art = 'hood';
+  // The resolved state and its result are one save. Reloading the result must
+  // never run the choice again, even when it leads into another encounter.
+  S.pendingScene = { kind: 'outcome', art: ctxData.art, out: {
+    text: out.text || '', deltas: out.deltas, animation: out.animation || null,
+    next: out.next ? ZT.Events.snapshot(S, out.next) : null,
+    deaths: (out.deaths || []).map(m => S.party.indexOf(m)),
+  } };
+  ZT.Save.save(S);
   const deltas = out.deltas.filter(Boolean);
   const items = [{ label: out.next ? 'And then' : 'Continue' }];
   const outcomeAlt = out.animation === 'tire_change' ? 'Changing the flat tire: raise the wagon, fit the spare, tighten the wheel, and lower the jack.'
@@ -742,9 +775,10 @@ function showOutcome(inst, out) {
   else if (deltas.some((d) => /^\+.*(food|medicine|ammunition|parts|goods)/i.test(d))) ZT.Audio.find();
 }
 function afterEvent() {
+  S.pendingScene = null;
+  ZT.Save.save(S);
   if (S.over) return goEnd();
   if (!ZT.State.aliveCount(S)) { ZT.Travel.endGame(S, 'party'); return goEnd(); }
-  ZT.Save.save(S);
   goTravel();
 }
 
@@ -1348,6 +1382,7 @@ function finishScavenge(o) {
 /* ---------------- end ---------------- */
 function goEnd() {
   screen = 'end';
+  S.pendingScene = null;
   const won = S.over && S.over.why === 'win';
   ctxData.art = won ? 'safezone' : 'memorial';
   const sc = S.over.score || ZT.Score.compute(S);
