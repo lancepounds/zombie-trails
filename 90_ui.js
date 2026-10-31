@@ -65,12 +65,13 @@ function bindMenu(root, items, onPick) {
     const k = String(it.key != null ? it.key : (i + 1)).toLowerCase();
     keyMap[k] = () => onPick(i, it);
   });
-  // arrow navigation
-  let idx = -1;
+  // Follow real focus, including changes made with Tab or a pointer.
   const focusable = buttons.filter((b) => !b.disabled);
   const move = (d) => {
     if (!focusable.length) return;
-    idx = (idx + d + focusable.length) % focusable.length;
+    const current = focusable.indexOf(document.activeElement);
+    const idx = current < 0 ? (d > 0 ? 0 : focusable.length - 1)
+      : (current + d + focusable.length) % focusable.length;
     focusable[idx].focus();
   };
   keyMap['arrowdown'] = () => move(1);
