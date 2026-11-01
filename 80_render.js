@@ -353,6 +353,79 @@ function landscape(c, s, base, off) {
   }
 }
 
+// A parked close-up shares the travel wagon's art and the real journey state.
+// Label positions also drive the native HTML buttons in the inspection screen.
+scenes.wagon = function (c, s, t, opt) {
+  landscape(c, s, 80, 0);
+  grey(c, 0, 96, W, 64, 'g25');
+  line(c, 0, 151, W, 151);
+  if (!s.vehicle.has) {
+    walkers(c, 110, 120, 0, ZT.State.aliveCount(s));
+    return;
+  }
+  const part = opt.wagonPart || 'cabin';
+  const progress = Math.min(1, Math.max(0, opt.elapsed || 0) / 0.4);
+  for (const spot of opt.wagonLabels === false ? [] : ZT.Wagon.parts) {
+    const bx = spot.x * W / 100, by = spot.y < 50 ? 29 : 132;
+    line(c, bx, by, spot.anchor[0], spot.anchor[1]);
+  }
+  const { x, y, scale } = ZT.Wagon.layout;
+  c.save(); c.translate(x, y); c.scale(scale, scale);
+  wagon(c, 0, 0, 0, false, s);
+  // Occupied windows reflect the living, present, non-isolated travelers.
+  for (const [xx, ww] of [[8,7],[17,6],[25,5]]) {
+    c.fillStyle = PAPER; c.fillRect(xx, 5, ww, 4);
+  }
+  const seated = ZT.Wagon.passengers(s).filter(m => !m.isolated);
+  seated.forEach((m, i) => {
+    const xx = 9 + i * 4;
+    px(c, xx, 6, 2, 2); px(c, xx - 1, 8, 4, 1);
+    if (part === 'cabin' && s.party.indexOf(m) === opt.wagonMember) {
+      px(c, xx + 2, 6 - (Math.sin(t * 3) > 0 ? 1 : 0), 1, 2);
+    }
+  });
+  if (part === 'engine') {
+    // The hood lifts, exposing the engine block and hoses.
+    shape(c, [[34,9],[44 - 4 * progress,9 - 8 * progress],[44,10 - 7 * progress],[35,10]], INK);
+    if (progress > 0.5) { c.fillStyle = PAPER; c.fillRect(39, 3, 1, 2); c.fillRect(38, 5, 1, 2); }
+    c.fillStyle = PAPER; c.fillRect(35, 10, 7, 3);
+    px(c, 36, 10, 4, 2); line(c, 35, 12, 41, 12); px(c, 40, 10, 2, 1);
+  } else if (part === 'hatch') {
+    // The hatch swings out at the rear; supplies appear only when carried.
+    line(c, 1, 8, 1 - 6 * progress, 8 - 6 * progress);
+    line(c, 1 - 6 * progress, 8 - 6 * progress, -2 - 6 * progress, 9 - 6 * progress);
+    c.fillStyle = PAPER; c.fillRect(0, 10, 7, 5);
+    if (s.inv.food > 0) rect(c, 1, 12, 4, 3);
+    if (s.inv.medicine > 0) { px(c, 5, 10, 2, 2); c.fillStyle = PAPER; c.fillRect(5,10,1,1); }
+  } else if (part === 'rack') {
+    c.fillStyle = PAPER; c.fillRect(8, -4, 22, 4);
+    if (ZT.State.weight(s) > 0) {
+      const lift = Math.round(progress * 3);
+      line(c, 8, -1, 11, -4-lift); line(c, 11, -4-lift, 26, -3-lift);
+      line(c, 26, -3-lift, 30, -1); grey(c, 11, -3-lift, 15, 1, 'g50');
+      c.fillStyle = PAPER; c.fillRect(13, -3-lift, 1, 3);
+      rect(c, 10, -2, 8, 3); rect(c, 21, -2, 7, 3);
+    } else { line(c, 8, -1, 29, -1); line(c, 14, -1, 14, 2); }
+  } else if (part === 'cabin') {
+    // An open side door and the dog-eared road atlas on the seat.
+    const reach = Math.round(8 * progress);
+    c.fillStyle = INK; c.fillRect(18, 10, 10, 5);
+    shape(c, [[28,10],[28+reach,11],[28+reach,16],[28,15]], PAPER);
+    line(c, 28, 10, 28+reach, 11); line(c, 28+reach, 11, 28+reach, 16);
+    line(c, 28+reach, 16, 28, 15);
+    c.fillStyle = PAPER; c.fillRect(19, 11, 6, 3);
+    line(c, 22, 11, 22, 13); px(c, 20, 12, 1, 1);
+  } else if (part === 'tires') {
+    for (const wx of [9,35]) {
+      rect(c, wx-5, 12, 10, 10);
+      px(c, wx-4, 20, 8, 1);
+    }
+  }
+  c.restore();
+  // Keep the inspection readable in bad weather without moving the parked car.
+  if (s.weather === 'snow') grey(c, 76, 148, 148, 2, 'g50');
+};
+
 scenes.travel = function (c, s, t, opt) {
   const off = (opt.dist || 0);
   const horizon = 96;

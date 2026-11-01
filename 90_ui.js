@@ -34,8 +34,8 @@ function statusLine() {
   </div>`;
 }
 
-function sceneHTML(alt) {
-  return `<div class="scene"><canvas id="scene" width="960" height="480" role="img" aria-label="${esc(alt || 'Monochrome travel scene')}"></canvas></div>`;
+function sceneHTML(alt, inspect) {
+  return `<div class="scene"><div class="scene-frame"><canvas id="scene" width="960" height="480" role="img" aria-label="${esc(alt || 'Monochrome travel scene')}"></canvas>${inspect && S.vehicle.has ? '<button id="wagon-inspect" type="button" class="wagon-entry" aria-label="Look around the wagon"><span>Look inside</span></button>' : ''}</div></div>`;
 }
 
 function menuHTML(items, opts) {
@@ -95,7 +95,7 @@ function syncSound(hasScene) {
 }
 function sceneOptions(extra) {
   const motion = settings.motion && !(motionQuery && motionQuery.matches);
-  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', animation: screen === 'outcome' ? ctxData.animation : null, sel: ctxData.sel }, extra);
+  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', animation: screen === 'outcome' ? ctxData.animation : null, sel: ctxData.sel, wagonPart: ctxData.wagonPart, wagonMember: ctxData.wagonMember, wagonLabels: settings.scale < 3 }, extra);
 }
 
 /* The scene is a band, not the page. Pick the largest whole-pixel scale that fits
@@ -346,7 +346,10 @@ function toggleSound(redraw = true) {
   updateSoundButton(); saveSettings();
   if (redraw && screen === 'settings') goSettings();
 }
-function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14, 1.5, 2][settings.scale] || 1); }
+function applyScale() {
+  document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14, 1.5, 2][settings.scale] || 1);
+  document.documentElement.classList.toggle('large-text', settings.scale >= 3);
+}
 function applyFlash() { const tube = document.getElementById('tube'); if (tube) tube.classList.toggle('reduced', !settings.flash); }
 function applyTheme() {
   ZT.Display.setTheme(settings.theme);
@@ -567,10 +570,11 @@ function goTravel() {
     { label: 'Journal', hint: 'what has happened so far', key: 'J' },
     { label: 'Save and quit', hint: '', key: '0' },
     { label: 'Settings', hint: 'text, sound, and untimed controls', key: 'S' },
+    { label: 'Look around the wagon', hint: 'open the hood, check the load, talk to the party', key: 'V', disabled: !v.has },
   ];
   const root = render(`
     ${statusLine()}
-    ${sceneHTML(sceneAlt())}
+    ${sceneHTML(sceneAlt(), true)}
     <div class="travel">
       <div class="left">
         <section class="road-note" aria-label="Before you travel">${ZT.Story.forecast(S).map(t => `<p>${esc(t)}</p>`).join('')}</section>
@@ -597,7 +601,10 @@ function goTravel() {
     else if (i === 9) goJournal();
     else if (i === 10) { ZT.Save.save(S); showModal('SAVED', 'The journey is written down. It will be here when you come back.', [{ label: 'Back to the road' }, { label: 'Quit to title' }], (k) => (k === 1 ? goTitle() : goTravel()), 'camp'); }
     else if (i === 11) goSettings();
+    else if (i === 12) goWagon();
   });
+  const wagonEntry = $('wagon-inspect');
+  if (wagonEntry) wagonEntry.addEventListener('click', () => goWagon());
   ZT.Save.save(S);
 }
 function sceneAlt() {
@@ -918,7 +925,83 @@ function goMemorial(m, next) {
 }
 
 /* ---------------- sub-screens ---------------- */
-function goStatus(back) {
+function goWagon() {
+  if (!S.vehicle.has) return goTravel();
+  screen = 'wagon'; ctxData.art = 'wagon';
+  ctxData.wagonPart = 'cabin'; ctxData.wagonMember = null;
+  const items = [
+    { label: 'Work on the wagon', key: 'R', hint: 'opens repair choices; repairs cost time' },
+    { label: 'Check all supplies', key: 'I' },
+    { label: 'Unfold the map', key: 'M' },
+    { label: 'Back to the road', key: 'Esc' },
+  ];
+  const root = render(`${statusLine()}
+    <h1 class="wagon-title">AROUND THE WAGON</h1>
+    <p class="wagon-place">${esc(ZT.Wagon.place(S))} ${esc(ZT.WEATHER[S.weather].name)}.</p>
+    <p class="small dim">Choose a label to look closer. Looking and talking cost no time or supplies.</p>
+    <div class="scene"><div class="scene-frame wagon-scene">
+      <canvas id="scene" width="960" height="480" role="img" aria-label="A close-up of your parked wagon with the cabin door open"></canvas>
+      <div class="wagon-spots" role="group" aria-label="Explore the wagon">
+        ${ZT.Wagon.parts.map((p, i) => `<button type="button" class="wagon-spot" data-wagon-part="${p.key}" aria-pressed="${p.key === 'cabin'}" aria-controls="wagon-readout" style="--spot-x:${p.x}%;--spot-y:${p.y}%;--spot-dx:${p.x === 3 ? '0' : p.x === 97 ? '-100%' : '-50%'};--spot-dy:${p.y < 50 ? '0' : '-100%'}"><span class="wagon-key">${i + 1}</span> ${esc(p.label)}</button>`).join('')}
+      </div>
+    </div></div>
+    <section id="wagon-readout" class="wagon-readout" aria-live="polite" aria-atomic="false"></section>
+    ${menuHTML(items, { compact: true })}`);
+  const back = () => {
+    goTravel();
+    const entry = $('wagon-inspect');
+    if (entry) entry.focus({ preventScroll: true });
+  };
+  bindMenu(root, items, i => {
+    if (i === 0) goRepair();
+    else if (i === 1) goStatus(() => goWagon(), 'Back to the wagon');
+    else if (i === 2) goMap(() => goWagon(), 'Back to the wagon');
+    else back();
+  });
+  const spots = [...root.querySelectorAll('[data-wagon-part]')];
+  function readout() {
+    const info = ZT.Wagon.describe(S, ctxData.wagonPart, ctxData.wagonMember);
+    ctxData.wagonMember = info.member ? info.member.index : null;
+    $('wagon-readout').innerHTML = `<h2>${esc(info.title)}</h2>
+      ${info.lines.map(line => `<p>${esc(line)}</p>`).join('')}
+      ${ctxData.wagonPart === 'cabin' ? `<div class="wagon-passengers" role="group" aria-label="Talk to a traveler">${ZT.Wagon.passengers(S).map(m => {
+        const i = S.party.indexOf(m);
+        return `<button type="button" class="theme-toggle" data-wagon-member="${i}" aria-pressed="${i === ctxData.wagonMember}">${esc(m.name)}<span>${esc(ZT.cap(m.role))}${m.isolated ? ' · isolated' : ''}</span></button>`;
+      }).join('')}</div>` : ''}
+      ${info.member ? `<div class="wagon-voice"><h3>${esc(info.member.name)}</h3><p class="small">${esc(info.member.detail)}</p><p class="wagon-quote">&ldquo;${esc(info.member.quote)}&rdquo;</p><p class="small dim">${esc(info.member.contribution)}</p></div>` : ''}`;
+    $('wagon-readout').querySelectorAll('[data-wagon-member]').forEach(button => {
+      button.addEventListener('click', () => {
+        ctxData.wagonMember = Number(button.dataset.wagonMember);
+        const index = ctxData.wagonMember;
+        readout();
+        $('wagon-readout').querySelector(`[data-wagon-member="${index}"]`).focus({ preventScroll: true });
+      });
+    });
+  }
+  const select = key => {
+    ctxData.wagonPart = key; sceneStarted = tAnim;
+    spots.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wagonPart === key)));
+    const labels = { cabin: 'cabin door open and the present travelers in the windows', rack: 'roof tarp lifted above the supplies', engine: 'hood raised above the engine', hatch: 'rear hatch open beside the supply boxes', tires: 'tires marked for a closer look' };
+    $('scene').setAttribute('aria-label', `Your parked wagon: ${labels[key]}.`);
+    readout();
+  };
+  spots.forEach((button, i) => {
+    button.addEventListener('click', () => select(button.dataset.wagonPart));
+    keyMap[String(i + 1)] = () => { button.focus({ preventScroll: true }); select(button.dataset.wagonPart); };
+  });
+  const move = delta => {
+    const focused = spots.indexOf(document.activeElement);
+    const current = focused < 0 ? ZT.Wagon.parts.findIndex(p => p.key === ctxData.wagonPart) : focused;
+    const button = spots[(current + delta + spots.length) % spots.length];
+    button.focus({ preventScroll: true }); select(button.dataset.wagonPart);
+  };
+  keyMap.arrowleft = () => move(-1); keyMap.arrowright = () => move(1);
+  keyMap.escape = back;
+  readout();
+  spots[0].focus({ preventScroll: true });
+}
+
+function goStatus(back, backLabel) {
   screen = 'status'; ctxData.art = 'travel';
   const v = S.vehicle;
   const subs = ZT.Vehicle.SUBS.map((k) => `<tr><th scope="row">${ZT.cap(k)}</th><td>${ZT.cap(ZT.Vehicle.subStatus(v[k]))}</td><td class="meter"><span style="width:${Math.round(v[k])}%"></span><b>${Math.round(v[k])}</b></td></tr>`).join('');
@@ -962,7 +1045,7 @@ function goStatus(back) {
           </table>
         </section>
       </div>
-      ${menuHTML([{ label: 'Back to the road', key: 'Esc' }])}
+      ${menuHTML([{ label: backLabel || 'Back to the road', key: 'Esc' }])}
     </div>`);
   bindMenu(root, [{ label: 'Back' }], () => (back ? back() : goTravel()));
   keyMap['escape'] = () => (back ? back() : goTravel());
@@ -979,9 +1062,10 @@ function memberNotes(m) {
   return parts.length ? parts.join('; ') : '—';
 }
 
-function goMap(back) {
+function goMap(back, backLabel) {
   screen = 'map'; ctxData.art = null;
   ctxData.mapBack = back || (() => goTravel());
+  ctxData.mapBackLabel = backLabel || 'Back to the road';
   ctxData.sel = S.legTo || S.at;
   ctxData.mapZoom = 1;
   ctxData.mapCenter = ZT.position(S);
@@ -1038,7 +1122,7 @@ function drawMapScreen(focus) {
     ${statusLine()}
     <div class="atlas">
       <header class="atlas-heading"><div><h1>ROAD ATLAS</h1><p>${esc(here)}</p></div>
-        <button class="atlas-button" id="atlas-back">Back to the road <kbd>Esc</kbd></button></header>
+        <button class="atlas-button" id="atlas-back">${esc(ctxData.mapBackLabel)} <kbd>Esc</kbd></button></header>
       <dl class="atlas-summary"><div><dt>Traveled</dt><dd>${Math.round(S.miles)} mi</dd></div>
         <div><dt>${leg ? 'Next: ' + esc(ZT.NODES[leg.to].name) : 'At ' + esc(ZT.NODES[S.at].name)}</dt><dd>${leg ? ZT.milesToNext(S) + ' mi' : 'Choose a road'}</dd></div>
         <div><dt>Shortest road to Boise</dt><dd>${Math.round(ZT.milesToEnd(S))} mi</dd></div></dl>
