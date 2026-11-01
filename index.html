@@ -137,6 +137,47 @@ b, strong { font-weight: 700; }
   display: block; max-width: 100%; image-rendering: pixelated;
   background: var(--ink); border: 3px double var(--phos);
 }
+.scene-frame { position: relative; max-width: 100%; }
+.wagon-entry {
+  position: absolute; left: 36%; top: 58%; width: 31%; height: 35%;
+  min-width: 44px; min-height: 44px; border: 1px dashed var(--phos-dim);
+  background: transparent; color: var(--phos); cursor: pointer; font: inherit;
+}
+.wagon-entry span {
+  position: absolute; left: 50%; bottom: -7px; transform: translate(-50%, 50%);
+  background: var(--ink); border: 1px solid var(--phos); padding: 5px 8px;
+  white-space: nowrap; line-height: 1.2; font-size: calc(12px * var(--tscale));
+}
+.wagon-entry:hover, .wagon-entry:focus-visible { outline: 3px double var(--phos); outline-offset: 3px; }
+.wagon-title { margin-top: var(--gap); }
+.wagon-place { margin-bottom: 6px; }
+.wagon-scene { margin-top: 12px; }
+.wagon-spot {
+  position: absolute; left: var(--spot-x); top: var(--spot-y);
+  transform: translate(var(--spot-dx), var(--spot-dy));
+  min-width: 44px; min-height: 44px; width: max-content; max-width: 34%;
+  border: 2px solid var(--phos); padding: 7px 8px;
+  background: var(--ink); color: var(--phos); cursor: pointer;
+  font: inherit; font-size: calc(13px * var(--tscale)); line-height: 1.25;
+}
+.wagon-spot[aria-pressed="true"], .wagon-passengers [aria-pressed="true"] { background: var(--phos); color: var(--ink); }
+.wagon-spot:hover, .wagon-spot:focus-visible { outline: 3px double var(--phos); outline-offset: 3px; }
+.wagon-key { font-weight: bold; }
+.wagon-readout { border: 1px solid var(--phos-dim); padding: clamp(12px, 2vw, 20px); margin: var(--gap) auto; max-width: 850px; }
+.wagon-readout h2 { font-size: calc(16px * var(--tscale)); }
+.wagon-passengers { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.wagon-passengers button { flex: 1 1 115px; text-align: left; font-family: inherit; letter-spacing: 0; }
+.wagon-passengers button span { display: block; font-size: calc(12px * var(--tscale)); }
+.wagon-voice { border-left: 3px solid var(--phos); padding: 10px 12px; margin-top: 12px; }
+.wagon-voice h3 { font-size: calc(14px * var(--tscale)); }
+.wagon-quote { font-style: italic; }
+.large-controls .wagon-spot { min-height: 56px; }
+.large-text .wagon-spots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
+.large-text .wagon-spot { position: static; transform: none; width: auto; max-width: none; min-height: 56px; overflow-wrap: anywhere; }
+@media (max-width: 430px) {
+  .wagon-spot { padding: 5px; font-size: calc(12px * var(--tscale)); }
+  .wagon-key { display: none; }
+}
 
 /* ---------- menus ---------- */
 .menu { list-style: none; margin: var(--gap) 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -5927,6 +5968,102 @@ ZT.Scavenge = {
   },
 };
 
+/* ===== 79_wagon.js ===== */
+/* A closer look at the wagon. Inspection and conversation never advance the
+   journey, spend supplies, or draw from the encounter RNG. */
+'use strict';
+ZT.Wagon = {
+  layout: { x: 62, y: 65, scale: 4 },
+  parts: [
+    { key: 'cabin', label: 'Cabin', x: 3, y: 4, anchor: [154, 95] },
+    { key: 'rack', label: 'Roof rack', x: 50, y: 4, anchor: [125, 54] },
+    { key: 'engine', label: 'Engine', x: 97, y: 4, anchor: [220, 103] },
+    { key: 'hatch', label: 'Rear hatch', x: 3, y: 96, anchor: [65, 111] },
+    { key: 'tires', label: 'Tires', x: 97, y: 96, anchor: [202, 133] },
+  ],
+  place(s) {
+    const leg = ZT.currentLeg(s);
+    return leg ? `Beside ${leg.road}, on the way to ${ZT.NODES[leg.to].name}.` : `Stopped at ${ZT.NODES[s.at].name}.`;
+  },
+  passengers(s) { return s.party.filter(m => m.alive && !m.missing); },
+  voice(s, m) {
+    if (m.isolated) return 'I can hear you from here. Just keep a little distance.';
+    if (m.inf === 'symptomatic') return 'Is it cold in here, or is that just me?';
+    if (m.inf === 'bitten') return m.infStable ? 'The bandage is holding. I keep checking anyway.' : 'Could somebody look at this before we go?';
+    if (m.health < 35 || m.injury > 30) return 'Every bump finds the same sore spot.';
+    if (m.illness > 20) return 'A little fresh air. Then we can go.';
+    if (m.fatigue > 65) return 'Wake me when we get there. Or when something important falls off.';
+    if (m.morale < 30) return 'Keep talking. The quiet is worse.';
+    if (s.inv.food <= 0) return 'I have checked the empty food box three times. It has not improved.';
+    const weather = {
+      heat: 'The seat belt buckle is hotter than the engine. That seems unfair.',
+      rain: 'There is a leak above my seat. It has become my seat by tradition.',
+      storm: 'I would like to complain about the weather to whoever is still in charge.',
+      snow: 'Save the blanket for whoever has the next watch.',
+      cold: 'The heater smells terrible. Please leave it on.',
+      fog: 'I can see the hood. I am choosing to find that reassuring.',
+    };
+    if (weather[s.weather]) return weather[s.weather];
+    const terrain = ZT.region(s).terrain;
+    if (s.day % 2 === 0) {
+      if (['mountain', 'hills'].includes(terrain)) return 'That view would be worth stopping for under almost any other circumstances.';
+      if (terrain === 'desert') return 'How can there be this much nothing between two places?';
+      if (terrain === 'river') return 'For a minute there, with the water alongside, it almost felt like a trip.';
+      if (terrain === 'farm') return 'Somebody planted all of that expecting to be here in the fall.';
+      if (terrain === 'suburb') return 'All those houses. I wonder who left the last porch light on.';
+    }
+    return ZT.Story.trait(m)[2];
+  },
+  describe(s, key, memberIndex) {
+    const v = s.vehicle, inv = s.inv;
+    if (!v.has) return { title: 'On foot', lines: ['The wagon is behind you. What you can carry is what you have.'] };
+    const need = ZT.Party.foodNeed(s);
+    const days = need > 0 ? Math.floor(inv.food / need) : 0;
+    const weight = Math.round(ZT.State.weight(s));
+    const condition = sub => `${ZT.cap(sub)}: ${ZT.Vehicle.subStatus(v[sub])}, ${Math.round(v[sub])}/100${v.broken === sub ? ' — broken' : ''}.`;
+    if (key === 'engine') return {
+      title: 'Under the hood',
+      lines: [condition('engine') + ' ' + condition('electrical'),
+        v.broken === 'engine' ? 'The engine is quiet for the wrong reason. Nobody wants to be the first to try the key.'
+          : v.engine < 50 ? 'A rag is tucked beside the radiator. It used to be a clean rag. The engine has had a difficult week.'
+          : 'Belts, hoses, and a grease-stained diagram. For now, everything is still connected to what it ought to be.',
+        `${ZT.n(inv.fuel)} gallons of fuel; about ${Math.floor(ZT.Vehicle.range(s))} miles at this load and pace. ${inv.tools > 0 ? 'The tool kit is within reach.' : 'There is no tool kit to reach for.'}`],
+    };
+    if (key === 'tires') return {
+      title: 'Down by the wheels',
+      lines: [condition('tires'),
+        v.broken === 'tires' ? 'The flat side faces the road. Everyone looks at it as though that might round it out.'
+          : v.tires < 50 ? 'The tread has worn thin. The next sharp stone will have an easier job than the last one.'
+          : 'Gravel is wedged in the tread. The tires have collected a little of every road you have taken.',
+        `${inv.parts} ${ZT.plural(inv.parts, 'set')} of spare parts left. ${['mountain', 'hills'].includes(ZT.region(s).terrain) ? 'The grades ahead will ask more of the wagon.' : 'The shoulder runs west until it disappears into the distance.'}`],
+    };
+    if (key === 'rack') return {
+      title: 'Under the roof straps',
+      lines: [`Total supplies: ${weight} lbs. ${weight > 900 ? 'The load is making the wagon use more fuel.' : 'The straps hold the load close to the roof.'}`,
+        weight ? 'A corner of the tarp lifts in the wind. The knots are all different; everyone insists theirs is the one that holds.' : 'Empty straps tap against the roof. There is room for supplies, if you can find them.',
+        `${ZT.n(inv.food)} lbs of food: about ${days} full days at the current rations (${ZT.n(need)} lb/day). ${inv.goods > 0 ? 'The trading goods are packed where you can find them.' : 'There are no trading goods left to bargain with.'}`],
+    };
+    if (key === 'hatch') return {
+      title: 'The rear hatch',
+      lines: [`${inv.medicine} medicine ${ZT.plural(inv.medicine, 'kit')}, ${inv.ammo} rounds, ${inv.parts} ${ZT.plural(inv.parts, 'set')} of parts.`,
+        inv.food > 0 ? 'The food box has become a table, a seat, and the subject of most conversations. Nobody puts their feet on it anymore.' : 'The empty food box is still here. Nobody has found a better use for it.',
+        condition('body') + ' ' + (inv.medicine > 0 ? 'The medicine is kept on top. Nobody wants to unpack everything in a hurry.' : 'The space where the medicine used to be is easy to find.')],
+    };
+    const members = this.passengers(s);
+    const m = members.find(member => s.party.indexOf(member) === memberIndex) || members[0];
+    return {
+      title: 'Inside the cabin',
+      lines: [members.length === 1 ? 'One traveler and a lot of empty seats. The folded atlas rides within reach.' : `${members.length} travelers, a folded atlas, and a dashboard nobody has dusted since Omaha.`,
+        v.electrical < 50 ? 'The radio dial glows unevenly. Most stations have become static.' : 'The radio is turned down. An old cassette sits beside the dial, waiting for a road that feels safe enough.'],
+      member: m ? {
+        index: s.party.indexOf(m), name: m.name,
+        detail: `${ZT.cap(m.role)} · ${ZT.Party.trait(m).name} · ${ZT.State.condition(m)}${m.isolated ? ' · isolated' : ''}. Health ${Math.round(m.health)}/100; fatigue ${Math.round(m.fatigue)}/100.`,
+        quote: this.voice(s, m), contribution: ZT.Party.contribution(s, m),
+      } : null,
+    };
+  },
+};
+
 /* ===== 80_render.js ===== */
 /* ZOMBIE TRAILS — monochrome renderer.
    Everything is drawn into a 320x160 buffer and blitted with nearest-neighbour
@@ -6282,6 +6419,79 @@ function landscape(c, s, base, off) {
     for (let i = 0; i < 16; i++) line(c, i * 22, base + 9, i * 18 + 18, base + 3);
   }
 }
+
+// A parked close-up shares the travel wagon's art and the real journey state.
+// Label positions also drive the native HTML buttons in the inspection screen.
+scenes.wagon = function (c, s, t, opt) {
+  landscape(c, s, 80, 0);
+  grey(c, 0, 96, W, 64, 'g25');
+  line(c, 0, 151, W, 151);
+  if (!s.vehicle.has) {
+    walkers(c, 110, 120, 0, ZT.State.aliveCount(s));
+    return;
+  }
+  const part = opt.wagonPart || 'cabin';
+  const progress = Math.min(1, Math.max(0, opt.elapsed || 0) / 0.4);
+  for (const spot of opt.wagonLabels === false ? [] : ZT.Wagon.parts) {
+    const bx = spot.x * W / 100, by = spot.y < 50 ? 29 : 132;
+    line(c, bx, by, spot.anchor[0], spot.anchor[1]);
+  }
+  const { x, y, scale } = ZT.Wagon.layout;
+  c.save(); c.translate(x, y); c.scale(scale, scale);
+  wagon(c, 0, 0, 0, false, s);
+  // Occupied windows reflect the living, present, non-isolated travelers.
+  for (const [xx, ww] of [[8,7],[17,6],[25,5]]) {
+    c.fillStyle = PAPER; c.fillRect(xx, 5, ww, 4);
+  }
+  const seated = ZT.Wagon.passengers(s).filter(m => !m.isolated);
+  seated.forEach((m, i) => {
+    const xx = 9 + i * 4;
+    px(c, xx, 6, 2, 2); px(c, xx - 1, 8, 4, 1);
+    if (part === 'cabin' && s.party.indexOf(m) === opt.wagonMember) {
+      px(c, xx + 2, 6 - (Math.sin(t * 3) > 0 ? 1 : 0), 1, 2);
+    }
+  });
+  if (part === 'engine') {
+    // The hood lifts, exposing the engine block and hoses.
+    shape(c, [[34,9],[44 - 4 * progress,9 - 8 * progress],[44,10 - 7 * progress],[35,10]], INK);
+    if (progress > 0.5) { c.fillStyle = PAPER; c.fillRect(39, 3, 1, 2); c.fillRect(38, 5, 1, 2); }
+    c.fillStyle = PAPER; c.fillRect(35, 10, 7, 3);
+    px(c, 36, 10, 4, 2); line(c, 35, 12, 41, 12); px(c, 40, 10, 2, 1);
+  } else if (part === 'hatch') {
+    // The hatch swings out at the rear; supplies appear only when carried.
+    line(c, 1, 8, 1 - 6 * progress, 8 - 6 * progress);
+    line(c, 1 - 6 * progress, 8 - 6 * progress, -2 - 6 * progress, 9 - 6 * progress);
+    c.fillStyle = PAPER; c.fillRect(0, 10, 7, 5);
+    if (s.inv.food > 0) rect(c, 1, 12, 4, 3);
+    if (s.inv.medicine > 0) { px(c, 5, 10, 2, 2); c.fillStyle = PAPER; c.fillRect(5,10,1,1); }
+  } else if (part === 'rack') {
+    c.fillStyle = PAPER; c.fillRect(8, -4, 22, 4);
+    if (ZT.State.weight(s) > 0) {
+      const lift = Math.round(progress * 3);
+      line(c, 8, -1, 11, -4-lift); line(c, 11, -4-lift, 26, -3-lift);
+      line(c, 26, -3-lift, 30, -1); grey(c, 11, -3-lift, 15, 1, 'g50');
+      c.fillStyle = PAPER; c.fillRect(13, -3-lift, 1, 3);
+      rect(c, 10, -2, 8, 3); rect(c, 21, -2, 7, 3);
+    } else { line(c, 8, -1, 29, -1); line(c, 14, -1, 14, 2); }
+  } else if (part === 'cabin') {
+    // An open side door and the dog-eared road atlas on the seat.
+    const reach = Math.round(8 * progress);
+    c.fillStyle = INK; c.fillRect(18, 10, 10, 5);
+    shape(c, [[28,10],[28+reach,11],[28+reach,16],[28,15]], PAPER);
+    line(c, 28, 10, 28+reach, 11); line(c, 28+reach, 11, 28+reach, 16);
+    line(c, 28+reach, 16, 28, 15);
+    c.fillStyle = PAPER; c.fillRect(19, 11, 6, 3);
+    line(c, 22, 11, 22, 13); px(c, 20, 12, 1, 1);
+  } else if (part === 'tires') {
+    for (const wx of [9,35]) {
+      rect(c, wx-5, 12, 10, 10);
+      px(c, wx-4, 20, 8, 1);
+    }
+  }
+  c.restore();
+  // Keep the inspection readable in bad weather without moving the parked car.
+  if (s.weather === 'snow') grey(c, 76, 148, 148, 2, 'g50');
+};
 
 scenes.travel = function (c, s, t, opt) {
   const off = (opt.dist || 0);
@@ -8231,8 +8441,8 @@ function statusLine() {
   </div>`;
 }
 
-function sceneHTML(alt) {
-  return `<div class="scene"><canvas id="scene" width="960" height="480" role="img" aria-label="${esc(alt || 'Monochrome travel scene')}"></canvas></div>`;
+function sceneHTML(alt, inspect) {
+  return `<div class="scene"><div class="scene-frame"><canvas id="scene" width="960" height="480" role="img" aria-label="${esc(alt || 'Monochrome travel scene')}"></canvas>${inspect && S.vehicle.has ? '<button id="wagon-inspect" type="button" class="wagon-entry" aria-label="Look around the wagon"><span>Look inside</span></button>' : ''}</div></div>`;
 }
 
 function menuHTML(items, opts) {
@@ -8292,7 +8502,7 @@ function syncSound(hasScene) {
 }
 function sceneOptions(extra) {
   const motion = settings.motion && !(motionQuery && motionQuery.matches);
-  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', animation: screen === 'outcome' ? ctxData.animation : null, sel: ctxData.sel }, extra);
+  return Object.assign({ elapsed: tAnim - sceneStarted, motion, reduce: !settings.flash || !motion, settled: screen === 'outcome', animation: screen === 'outcome' ? ctxData.animation : null, sel: ctxData.sel, wagonPart: ctxData.wagonPart, wagonMember: ctxData.wagonMember, wagonLabels: settings.scale < 3 }, extra);
 }
 
 /* The scene is a band, not the page. Pick the largest whole-pixel scale that fits
@@ -8543,7 +8753,10 @@ function toggleSound(redraw = true) {
   updateSoundButton(); saveSettings();
   if (redraw && screen === 'settings') goSettings();
 }
-function applyScale() { document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14, 1.5, 2][settings.scale] || 1); }
+function applyScale() {
+  document.documentElement.style.setProperty('--tscale', [0.92, 1, 1.14, 1.5, 2][settings.scale] || 1);
+  document.documentElement.classList.toggle('large-text', settings.scale >= 3);
+}
 function applyFlash() { const tube = document.getElementById('tube'); if (tube) tube.classList.toggle('reduced', !settings.flash); }
 function applyTheme() {
   ZT.Display.setTheme(settings.theme);
@@ -8764,10 +8977,11 @@ function goTravel() {
     { label: 'Journal', hint: 'what has happened so far', key: 'J' },
     { label: 'Save and quit', hint: '', key: '0' },
     { label: 'Settings', hint: 'text, sound, and untimed controls', key: 'S' },
+    { label: 'Look around the wagon', hint: 'open the hood, check the load, talk to the party', key: 'V', disabled: !v.has },
   ];
   const root = render(`
     ${statusLine()}
-    ${sceneHTML(sceneAlt())}
+    ${sceneHTML(sceneAlt(), true)}
     <div class="travel">
       <div class="left">
         <section class="road-note" aria-label="Before you travel">${ZT.Story.forecast(S).map(t => `<p>${esc(t)}</p>`).join('')}</section>
@@ -8794,7 +9008,10 @@ function goTravel() {
     else if (i === 9) goJournal();
     else if (i === 10) { ZT.Save.save(S); showModal('SAVED', 'The journey is written down. It will be here when you come back.', [{ label: 'Back to the road' }, { label: 'Quit to title' }], (k) => (k === 1 ? goTitle() : goTravel()), 'camp'); }
     else if (i === 11) goSettings();
+    else if (i === 12) goWagon();
   });
+  const wagonEntry = $('wagon-inspect');
+  if (wagonEntry) wagonEntry.addEventListener('click', () => goWagon());
   ZT.Save.save(S);
 }
 function sceneAlt() {
@@ -9115,7 +9332,83 @@ function goMemorial(m, next) {
 }
 
 /* ---------------- sub-screens ---------------- */
-function goStatus(back) {
+function goWagon() {
+  if (!S.vehicle.has) return goTravel();
+  screen = 'wagon'; ctxData.art = 'wagon';
+  ctxData.wagonPart = 'cabin'; ctxData.wagonMember = null;
+  const items = [
+    { label: 'Work on the wagon', key: 'R', hint: 'opens repair choices; repairs cost time' },
+    { label: 'Check all supplies', key: 'I' },
+    { label: 'Unfold the map', key: 'M' },
+    { label: 'Back to the road', key: 'Esc' },
+  ];
+  const root = render(`${statusLine()}
+    <h1 class="wagon-title">AROUND THE WAGON</h1>
+    <p class="wagon-place">${esc(ZT.Wagon.place(S))} ${esc(ZT.WEATHER[S.weather].name)}.</p>
+    <p class="small dim">Choose a label to look closer. Looking and talking cost no time or supplies.</p>
+    <div class="scene"><div class="scene-frame wagon-scene">
+      <canvas id="scene" width="960" height="480" role="img" aria-label="A close-up of your parked wagon with the cabin door open"></canvas>
+      <div class="wagon-spots" role="group" aria-label="Explore the wagon">
+        ${ZT.Wagon.parts.map((p, i) => `<button type="button" class="wagon-spot" data-wagon-part="${p.key}" aria-pressed="${p.key === 'cabin'}" aria-controls="wagon-readout" style="--spot-x:${p.x}%;--spot-y:${p.y}%;--spot-dx:${p.x === 3 ? '0' : p.x === 97 ? '-100%' : '-50%'};--spot-dy:${p.y < 50 ? '0' : '-100%'}"><span class="wagon-key">${i + 1}</span> ${esc(p.label)}</button>`).join('')}
+      </div>
+    </div></div>
+    <section id="wagon-readout" class="wagon-readout" aria-live="polite" aria-atomic="false"></section>
+    ${menuHTML(items, { compact: true })}`);
+  const back = () => {
+    goTravel();
+    const entry = $('wagon-inspect');
+    if (entry) entry.focus({ preventScroll: true });
+  };
+  bindMenu(root, items, i => {
+    if (i === 0) goRepair();
+    else if (i === 1) goStatus(() => goWagon(), 'Back to the wagon');
+    else if (i === 2) goMap(() => goWagon(), 'Back to the wagon');
+    else back();
+  });
+  const spots = [...root.querySelectorAll('[data-wagon-part]')];
+  function readout() {
+    const info = ZT.Wagon.describe(S, ctxData.wagonPart, ctxData.wagonMember);
+    ctxData.wagonMember = info.member ? info.member.index : null;
+    $('wagon-readout').innerHTML = `<h2>${esc(info.title)}</h2>
+      ${info.lines.map(line => `<p>${esc(line)}</p>`).join('')}
+      ${ctxData.wagonPart === 'cabin' ? `<div class="wagon-passengers" role="group" aria-label="Talk to a traveler">${ZT.Wagon.passengers(S).map(m => {
+        const i = S.party.indexOf(m);
+        return `<button type="button" class="theme-toggle" data-wagon-member="${i}" aria-pressed="${i === ctxData.wagonMember}">${esc(m.name)}<span>${esc(ZT.cap(m.role))}${m.isolated ? ' · isolated' : ''}</span></button>`;
+      }).join('')}</div>` : ''}
+      ${info.member ? `<div class="wagon-voice"><h3>${esc(info.member.name)}</h3><p class="small">${esc(info.member.detail)}</p><p class="wagon-quote">&ldquo;${esc(info.member.quote)}&rdquo;</p><p class="small dim">${esc(info.member.contribution)}</p></div>` : ''}`;
+    $('wagon-readout').querySelectorAll('[data-wagon-member]').forEach(button => {
+      button.addEventListener('click', () => {
+        ctxData.wagonMember = Number(button.dataset.wagonMember);
+        const index = ctxData.wagonMember;
+        readout();
+        $('wagon-readout').querySelector(`[data-wagon-member="${index}"]`).focus({ preventScroll: true });
+      });
+    });
+  }
+  const select = key => {
+    ctxData.wagonPart = key; sceneStarted = tAnim;
+    spots.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wagonPart === key)));
+    const labels = { cabin: 'cabin door open and the present travelers in the windows', rack: 'roof tarp lifted above the supplies', engine: 'hood raised above the engine', hatch: 'rear hatch open beside the supply boxes', tires: 'tires marked for a closer look' };
+    $('scene').setAttribute('aria-label', `Your parked wagon: ${labels[key]}.`);
+    readout();
+  };
+  spots.forEach((button, i) => {
+    button.addEventListener('click', () => select(button.dataset.wagonPart));
+    keyMap[String(i + 1)] = () => { button.focus({ preventScroll: true }); select(button.dataset.wagonPart); };
+  });
+  const move = delta => {
+    const focused = spots.indexOf(document.activeElement);
+    const current = focused < 0 ? ZT.Wagon.parts.findIndex(p => p.key === ctxData.wagonPart) : focused;
+    const button = spots[(current + delta + spots.length) % spots.length];
+    button.focus({ preventScroll: true }); select(button.dataset.wagonPart);
+  };
+  keyMap.arrowleft = () => move(-1); keyMap.arrowright = () => move(1);
+  keyMap.escape = back;
+  readout();
+  spots[0].focus({ preventScroll: true });
+}
+
+function goStatus(back, backLabel) {
   screen = 'status'; ctxData.art = 'travel';
   const v = S.vehicle;
   const subs = ZT.Vehicle.SUBS.map((k) => `<tr><th scope="row">${ZT.cap(k)}</th><td>${ZT.cap(ZT.Vehicle.subStatus(v[k]))}</td><td class="meter"><span style="width:${Math.round(v[k])}%"></span><b>${Math.round(v[k])}</b></td></tr>`).join('');
@@ -9159,7 +9452,7 @@ function goStatus(back) {
           </table>
         </section>
       </div>
-      ${menuHTML([{ label: 'Back to the road', key: 'Esc' }])}
+      ${menuHTML([{ label: backLabel || 'Back to the road', key: 'Esc' }])}
     </div>`);
   bindMenu(root, [{ label: 'Back' }], () => (back ? back() : goTravel()));
   keyMap['escape'] = () => (back ? back() : goTravel());
@@ -9176,9 +9469,10 @@ function memberNotes(m) {
   return parts.length ? parts.join('; ') : '—';
 }
 
-function goMap(back) {
+function goMap(back, backLabel) {
   screen = 'map'; ctxData.art = null;
   ctxData.mapBack = back || (() => goTravel());
+  ctxData.mapBackLabel = backLabel || 'Back to the road';
   ctxData.sel = S.legTo || S.at;
   ctxData.mapZoom = 1;
   ctxData.mapCenter = ZT.position(S);
@@ -9235,7 +9529,7 @@ function drawMapScreen(focus) {
     ${statusLine()}
     <div class="atlas">
       <header class="atlas-heading"><div><h1>ROAD ATLAS</h1><p>${esc(here)}</p></div>
-        <button class="atlas-button" id="atlas-back">Back to the road <kbd>Esc</kbd></button></header>
+        <button class="atlas-button" id="atlas-back">${esc(ctxData.mapBackLabel)} <kbd>Esc</kbd></button></header>
       <dl class="atlas-summary"><div><dt>Traveled</dt><dd>${Math.round(S.miles)} mi</dd></div>
         <div><dt>${leg ? 'Next: ' + esc(ZT.NODES[leg.to].name) : 'At ' + esc(ZT.NODES[S.at].name)}</dt><dd>${leg ? ZT.milesToNext(S) + ' mi' : 'Choose a road'}</dd></div>
         <div><dt>Shortest road to Boise</dt><dd>${Math.round(ZT.milesToEnd(S))} mi</dd></div></dl>

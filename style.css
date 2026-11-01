@@ -118,6 +118,47 @@ b, strong { font-weight: 700; }
   display: block; max-width: 100%; image-rendering: pixelated;
   background: var(--ink); border: 3px double var(--phos);
 }
+.scene-frame { position: relative; max-width: 100%; }
+.wagon-entry {
+  position: absolute; left: 36%; top: 58%; width: 31%; height: 35%;
+  min-width: 44px; min-height: 44px; border: 1px dashed var(--phos-dim);
+  background: transparent; color: var(--phos); cursor: pointer; font: inherit;
+}
+.wagon-entry span {
+  position: absolute; left: 50%; bottom: -7px; transform: translate(-50%, 50%);
+  background: var(--ink); border: 1px solid var(--phos); padding: 5px 8px;
+  white-space: nowrap; line-height: 1.2; font-size: calc(12px * var(--tscale));
+}
+.wagon-entry:hover, .wagon-entry:focus-visible { outline: 3px double var(--phos); outline-offset: 3px; }
+.wagon-title { margin-top: var(--gap); }
+.wagon-place { margin-bottom: 6px; }
+.wagon-scene { margin-top: 12px; }
+.wagon-spot {
+  position: absolute; left: var(--spot-x); top: var(--spot-y);
+  transform: translate(var(--spot-dx), var(--spot-dy));
+  min-width: 44px; min-height: 44px; width: max-content; max-width: 34%;
+  border: 2px solid var(--phos); padding: 7px 8px;
+  background: var(--ink); color: var(--phos); cursor: pointer;
+  font: inherit; font-size: calc(13px * var(--tscale)); line-height: 1.25;
+}
+.wagon-spot[aria-pressed="true"], .wagon-passengers [aria-pressed="true"] { background: var(--phos); color: var(--ink); }
+.wagon-spot:hover, .wagon-spot:focus-visible { outline: 3px double var(--phos); outline-offset: 3px; }
+.wagon-key { font-weight: bold; }
+.wagon-readout { border: 1px solid var(--phos-dim); padding: clamp(12px, 2vw, 20px); margin: var(--gap) auto; max-width: 850px; }
+.wagon-readout h2 { font-size: calc(16px * var(--tscale)); }
+.wagon-passengers { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.wagon-passengers button { flex: 1 1 115px; text-align: left; font-family: inherit; letter-spacing: 0; }
+.wagon-passengers button span { display: block; font-size: calc(12px * var(--tscale)); }
+.wagon-voice { border-left: 3px solid var(--phos); padding: 10px 12px; margin-top: 12px; }
+.wagon-voice h3 { font-size: calc(14px * var(--tscale)); }
+.wagon-quote { font-style: italic; }
+.large-controls .wagon-spot { min-height: 56px; }
+.large-text .wagon-spots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
+.large-text .wagon-spot { position: static; transform: none; width: auto; max-width: none; min-height: 56px; overflow-wrap: anywhere; }
+@media (max-width: 430px) {
+  .wagon-spot { padding: 5px; font-size: calc(12px * var(--tscale)); }
+  .wagon-key { display: none; }
+}
 
 /* ---------- menus ---------- */
 .menu { list-style: none; margin: var(--gap) 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }

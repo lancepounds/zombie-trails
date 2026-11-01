@@ -51,6 +51,17 @@ for(const theme of process.env.ZT_TEST_THEME ? [process.env.ZT_TEST_THEME] : ['l
     assert.notDeepEqual(draw(key,s,0.3,{motion:true,settled:true}),draw(key,s,2.7,{motion:true,settled:true}),key+' animation must be visible');
   }
   const s=freeze(state());
+  const inspection = state(); Object.assign(inspection.inv, { food: 100, medicine: 2, goods: 3 }); freeze(inspection);
+  const parts = Z.Wagon.parts.map(p => p.key);
+  const views = parts.map(wagonPart => draw('wagon', inspection, 1, { motion: true, wagonPart, wagonMember: 0 }));
+  for (let i = 0; i < views.length; i++) for (let j = i + 1; j < views.length; j++) {
+    assert.notDeepEqual(views[i], views[j], 'each wagon part must reveal a different picture');
+  }
+  for (const wagonPart of ['engine', 'rack', 'hatch', 'cabin']) {
+    const opts = { motion: true, wagonPart };
+    assert.notDeepEqual(draw('wagon', inspection, 0, opts), draw('wagon', inspection, 1, opts), wagonPart + ' opens visibly');
+    assert.deepEqual(draw('wagon', inspection, 0, { ...opts, motion: false }), draw('wagon', inspection, 20, { ...opts, motion: false }), 'reduced-motion inspection is stable');
+  }
   for(const animation of ['overrun_escape','overrun_detour','overrun_abandon']) {
     const fork=state('sandhills');fork.at='ogallala';fork.legTo='chimney';
     fork.flags.overrun={from:'ogallala',original:'chimney',to:animation==='overrun_escape'?'chimney':'cheyenne'};

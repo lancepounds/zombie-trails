@@ -12,6 +12,25 @@ monospace fallbacks.
 
 ## The heart of the game
 
+### Look around the wagon
+
+Tap the wagon in the travel picture, choose **Look around the wagon**, or press
+**V**. Five large labels open the cabin door, lift the roof tarp and rear hatch,
+raise the hood, or bring the tires into focus. The close-up keeps the same pixel
+art and light/dark palette. Buttons support touch, keyboard, and dwell; **1–5**
+or **Left/Right** select a part, and **Escape** returns to the road.
+
+The supplies and condition are your actual supplies and condition. Choose a
+traveler in the cabin to hear a short line reflecting their role, health,
+fatigue, morale, weather, or the land outside. Dead and missing travelers do not
+appear; isolated travelers speak from a distance. Looking and talking do not
+spend time, change supplies, or advance encounter randomness. Repairs still use
+the existing repair menu and its normal costs. Reduced motion shows open panels
+immediately. Existing saves need no conversion.
+
+Run `node test-wagon.js` for inspection/state checks; `npm run test:graphics`
+also checks the different views and reduced-motion behavior.
+
 ### The overrun junction
 
 The first major route fork you leave in a working wagon now triggers a one-time
