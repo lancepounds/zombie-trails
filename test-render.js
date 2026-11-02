@@ -51,6 +51,21 @@ for(const theme of process.env.ZT_TEST_THEME ? [process.env.ZT_TEST_THEME] : ['l
     assert.notDeepEqual(draw(key,s,0.3,{motion:true,settled:true}),draw(key,s,2.7,{motion:true,settled:true}),key+' animation must be visible');
   }
   const s=freeze(state());
+  // Tires keep their contact with the road across suspension/spoke frames.
+  // A car-sized checkerboard patch must not travel beneath the wagon.
+  const pixel = (image, x, y) => image.subarray((y * 320 + x) * 4, (y * 320 + x) * 4 + 4);
+  const paper = Buffer.from(Z.Display.palette().paper.match(/\w\w/g).map(v => parseInt(v, 16)).concat(255));
+  const rolling = [0, 1, 2, 4, 6, 8, 10, 12].map(dist => draw('travel', s, 1, { motion: true, dist }));
+  for (const image of rolling) {
+    for (const cx of [137, 189]) for (let y = 143; y <= 145; y++) for (let x = cx-7; x <= cx+8; x++) {
+      assert(pixel(image,x,y).equals(pixel(rolling[0],x,y)), 'the tire contact stays planted while the body bounces');
+    }
+    for (let y = 141; y <= 147; y++) for (let x = 123; x <= 207; x++) {
+      if (Math.abs(x-137) > 9 && Math.abs(x-189) > 9) assert(pixel(image,x,y).equals(paper), 'no strip of ground moves with the wagon');
+    }
+  }
+  const wheelCenter = image => Buffer.concat(Array.from({length: 8}, (_,i) => image.subarray(((133+i)*320+133)*4, ((133+i)*320+141)*4)));
+  assert.notDeepEqual(wheelCenter(rolling[0]), wheelCenter(rolling[1]), 'the grounded wheels still rotate');
   const inspection = state(); Object.assign(inspection.inv, { food: 100, medicine: 2, goods: 3 }); freeze(inspection);
   const parts = Z.Wagon.parts.map(p => p.key);
   const views = parts.map(wagonPart => draw('wagon', inspection, 1, { motion: true, wagonPart, wagonMember: 0 }));

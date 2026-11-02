@@ -6303,10 +6303,12 @@ function poles(c, off, baseY) {
 }
 
 /* ---------- the wagon ---------- */
-function wagon(c, x, y, frame, dead, state) {
+function wagon(c, x, y, frame, dead, state, bodyBob = 0) {
   // Wood-paneled wagon, loaded roof rack, chrome trim, and cut-out wheel arches.
   c.save(); c.translate(Math.round(x), Math.round(y));
-  grey(c, 2, 19, 42, 2, 'g50');
+  // Only the sprung body bounces. Wheels stay on the road, and the sprite must
+  // not carry a checkerboard strip of "ground" along beneath the tires.
+  c.save(); c.translate(0, bodyBob);
   shape(c, [[1,9],[5,9],[7,3],[30,3],[35,9],[41,9],[44,12],[44,16],[0,16],[0,11]], INK);
   px(c, 7, 1, 23, 1); px(c, 8, -3, 11, 4); rect(c, 21, -2, 8, 3);
   c.fillStyle = PAPER; c.fillRect(10,-2,7,1); c.fillRect(13,-3,1,4);
@@ -6316,6 +6318,9 @@ function wagon(c, x, y, frame, dead, state) {
   px(c, 18, 12, 1, 3); px(c, 27, 12, 1, 3); px(c, 20, 12, 3, 1);
   c.fillStyle = PAPER; c.fillRect(1,14,3,1); c.fillRect(39,11,3,2); c.fillRect(35,15,8,1);
   px(c, 32, 8, 3, 1); px(c, -1, 15, 3, 2); px(c, 42, 15, 3, 2);
+  if (state && state.vehicle.body < 40) { line(c, 19, 10, 24, 15); px(c, 4, 12, 3, 2); }
+  if (dead) { line(c, 34, 9, 40, 1); line(c, 40, 1, 44, 3); px(c, 35, 9, 6, 2); }
+  c.restore();
   for (const wx of [9,35]) {
     disc(c, wx, 17, 4, PAPER); disc(c, wx, 17, 3); disc(c, wx, 17, 1, PAPER);
     const a = dead ? 0 : frame * 0.9;
@@ -6323,8 +6328,6 @@ function wagon(c, x, y, frame, dead, state) {
       c.fillStyle = PAPER; c.fillRect(Math.round(wx+Math.cos(a+k*Math.PI)*2),Math.round(17+Math.sin(a+k*Math.PI)*2),1,1);
     }
   }
-  if (state && state.vehicle.body < 40) { line(c, 19, 10, 24, 15); px(c, 4, 12, 3, 2); }
-  if (dead) { line(c, 34, 9, 40, 1); line(c, 40, 1, 44, 3); px(c, 35, 9, 6, 2); }
   c.restore();
 }
 function walkers(c, x, y, frame, n) {
@@ -6517,8 +6520,8 @@ scenes.travel = function (c, s, t, opt) {
   // the wagon (or walkers on foot)
   const bob = Math.round(Math.sin(off * 0.9) * (s.pace === 'hard' ? 1.2 : 0.6));
   if (s.vehicle.has) {
-    c.save(); c.translate(119, horizon + 7 + bob); c.scale(2, 2);
-    wagon(c, 0, 0, off, !!s.vehicle.broken, s); c.restore();
+    c.save(); c.translate(119, horizon + 7); c.scale(2, 2);
+    wagon(c, 0, 0, off, !!s.vehicle.broken, s, bob / 2); c.restore();
     // Tailpipe puffs stay behind the wagon. Engine trouble has a visible cue.
     for (let i = 0; i < 3; i++) {
       const p = (t * 7 + i * 4) % 12;
