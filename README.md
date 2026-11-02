@@ -77,6 +77,9 @@ wagon and characters, deeper scenery, and illustrations that match the encounter
 
 - **A bigger travel wagon:** wood paneling, chrome trim, loaded roof rack,
   a driver in the window, turning wheels, and visible wear on a damaged body.
+  The tires keep a steady contact with the road while the body bounces; no
+  checkerboard strip of ground moves with the wagon.
+  [See the rolling wagon](docs/previews/wagon-ground-contact.gif).
   Walking parties are easier to see too.
 - **Regional scenery:** Nebraska fields, barns, grain silos, and windbreaks;
   shaded mountain ridges and fuller pines; desert mesas; town water towers;
